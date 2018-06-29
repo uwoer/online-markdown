@@ -1,41 +1,38 @@
 /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
-
+/******/
 /******/ 	// The require function
 /******/ 	function __webpack_require__(moduleId) {
-
+/******/
 /******/ 		// Check if module is in cache
-/******/ 		if(installedModules[moduleId])
+/******/ 		if(installedModules[moduleId]) {
 /******/ 			return installedModules[moduleId].exports;
-
+/******/ 		}
 /******/ 		// Create a new module (and put it into the cache)
 /******/ 		var module = installedModules[moduleId] = {
 /******/ 			i: moduleId,
 /******/ 			l: false,
 /******/ 			exports: {}
 /******/ 		};
-
+/******/
 /******/ 		// Execute the module function
 /******/ 		modules[moduleId].call(module.exports, module, module.exports, __webpack_require__);
-
+/******/
 /******/ 		// Flag the module as loaded
 /******/ 		module.l = true;
-
+/******/
 /******/ 		// Return the exports of the module
 /******/ 		return module.exports;
 /******/ 	}
-
-
+/******/
+/******/
 /******/ 	// expose the modules object (__webpack_modules__)
 /******/ 	__webpack_require__.m = modules;
-
+/******/
 /******/ 	// expose the module cache
 /******/ 	__webpack_require__.c = installedModules;
-
-/******/ 	// identity function for calling harmony imports with the correct context
-/******/ 	__webpack_require__.i = function(value) { return value; };
-
+/******/
 /******/ 	// define getter function for harmony exports
 /******/ 	__webpack_require__.d = function(exports, name, getter) {
 /******/ 		if(!__webpack_require__.o(exports, name)) {
@@ -46,7 +43,7 @@
 /******/ 			});
 /******/ 		}
 /******/ 	};
-
+/******/
 /******/ 	// getDefaultExport function for compatibility with non-harmony modules
 /******/ 	__webpack_require__.n = function(module) {
 /******/ 		var getter = module && module.__esModule ?
@@ -55,15 +52,15 @@
 /******/ 		__webpack_require__.d(getter, 'a', getter);
 /******/ 		return getter;
 /******/ 	};
-
+/******/
 /******/ 	// Object.prototype.hasOwnProperty.call
 /******/ 	__webpack_require__.o = function(object, property) { return Object.prototype.hasOwnProperty.call(object, property); };
-
+/******/
 /******/ 	// __webpack_public_path__
 /******/ 	__webpack_require__.p = "";
-
+/******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 16);
+/******/ 	return __webpack_require__(__webpack_require__.s = 3);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -12714,9 +12711,9 @@ jQuery.parseJSON = JSON.parse;
 // https://github.com/jrburke/requirejs/wiki/Updating-existing-libraries#wiki-anon
 
 if ( true ) {
-	!(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_RESULT__ = function() {
+	!(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_RESULT__ = (function() {
 		return jQuery;
-	}.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__),
+	}).apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__),
 				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
 }
 
@@ -12818,6 +12815,435 @@ module.exports = function() {
 /* 3 */
 /***/ (function(module, exports, __webpack_require__) {
 
+__webpack_require__(4);
+
+var $ = __webpack_require__(1);
+var showdown = __webpack_require__(0);
+var Clipboard = __webpack_require__(10);
+var CodeTheme = __webpack_require__(11);
+var PageTheme = __webpack_require__(12);
+
+__webpack_require__(13);
+__webpack_require__(14);
+__webpack_require__(15);
+__webpack_require__(16);
+
+
+var kv = location.href.split('?')[1];
+kv = kv && kv.split('&') || [];
+var params = {};
+$.each(kv, function(index, item) {
+  var m = (item || '').split('=');
+  if (m && m[0] && m[1]) {
+    params[m[0]]= m[1];
+  }
+});
+
+// 方便跨域加载资源
+if (/\.barretlee\.com$/.test(location.hostname)) {
+  document.domain = 'barretlee.com';
+}
+
+
+var converter =  new showdown.Converter({
+  extensions: ['prettify', 'tasklist', 'footnote'],
+  tables: true
+});
+/**
+ * [OnlineMarkdown description]
+ * @type {Object}
+ */
+var OnlineMarkdown = {
+  currentState: 'edit',
+  init: function() {
+    var self = this;
+    self.load().then(function() {
+      self.start()
+    }).fail(function(){
+      self.start();
+    });
+  },
+  start: function() {
+    this.bindEvt();
+    this.updateOutput();
+    new CodeTheme();
+    new PageTheme();
+    new Clipboard('.btn');
+  },
+  load: function() {
+    return $.ajax({
+      type: 'GET',
+      url: params.path || './demo.md',
+      dateType: 'text',
+      data: {
+        _t: new Date() * 1
+      },
+      timeout: 2000
+    }).then(function(data) {
+      $('#input').val(data);
+    });
+  },
+  bindEvt: function() {
+    var self = this;
+    $('#input').on('input keydown paste', self.updateOutput);
+    var $copy = $('.copy-button');
+    var $convert = $('.convert-button');
+    $convert.on('click', function() {
+      var $this = $(this);
+      if (self.currentState === 'preview') {
+        self.currentState = 'edit';
+        $this.text('预览');
+        $copy.hide();
+        $('#input').fadeIn();
+        $('#output').hide();
+      } else {
+        self.currentState = 'preview';
+        $this.text('编辑');
+        $copy.show();
+        $('#input').fadeOut();
+        $('#output').show();
+      }
+    });
+    if (params.preview) {
+      $convert.trigger('click');
+    }
+  },
+
+  updateOutput: function () {
+    var val = converter.makeHtml($('#input').val());
+    $('#output .wrapper').html(val);
+    PR.prettyPrint();
+    $('#outputCtt li').each(function() {
+      $(this).html('<span><span>' + $(this).html() + '</span></span>');
+    });
+  }
+};
+
+OnlineMarkdown.init();
+
+
+/***/ }),
+/* 4 */
+/***/ (function(module, exports, __webpack_require__) {
+
+// style-loader: Adds some css to the DOM by adding a <style> tag
+
+// load the styles
+var content = __webpack_require__(5);
+if(typeof content === 'string') content = [[module.i, content, '']];
+// add the styles to the DOM
+var update = __webpack_require__(9)(content, {});
+if(content.locals) module.exports = content.locals;
+// Hot Module Replacement
+if(false) {
+	// When the styles change, update the <style> tags
+	if(!content.locals) {
+		module.hot.accept("!!../../node_modules/_css-loader@0.26.4@css-loader/index.js!../../node_modules/_less-loader@2.2.3@less-loader/index.js??ref--2-2!./index.less", function() {
+			var newContent = require("!!../../node_modules/_css-loader@0.26.4@css-loader/index.js!../../node_modules/_less-loader@2.2.3@less-loader/index.js??ref--2-2!./index.less");
+			if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];
+			update(newContent);
+		});
+	}
+	// When the module is disposed, remove the <style> tags
+	module.hot.dispose(function() { update(); });
+}
+
+/***/ }),
+/* 5 */
+/***/ (function(module, exports, __webpack_require__) {
+
+exports = module.exports = __webpack_require__(2)();
+// imports
+exports.i(__webpack_require__(6), "");
+
+// module
+exports.push([module.i, "@charset \"utf-8\";\nh3#headline {\n  color: #444;\n  margin: 0;\n  padding: 11px 0px 5px 0px;\n  font-size: 11px;\n  line-height: 14px;\n  text-transform: uppercase;\n  letter-spacing: 2px;\n  font-weight: bold;\n}\nh2#headline {\n  color: #444;\n  margin: 0;\n  padding: 0px 0px 6px 0px;\n  font-size: 51px;\n  line-height: 44px;\n  letter-spacing: -2px;\n  font-weight: bold;\n  text-transform: none;\n}\n/* 防止用户自定义背景颜色对网页的影响，添加让用户可以自定义字体 */\nhtml {\n  color: #333;\n  background: #fff;\n  -webkit-text-size-adjust: 100%;\n  -ms-text-size-adjust: 100%;\n  text-rendering: optimizelegibility;\n}\n/* 如果你的项目仅支持 IE9+ | Chrome | Firefox 等，推荐在 <html> 中添加 .borderbox 这个 class */\nhtml.borderbox *,\nhtml.borderbox *:before,\nhtml.borderbox *:after {\n  -moz-box-sizing: border-box;\n  -webkit-box-sizing: border-box;\n  box-sizing: border-box;\n}\n/* 内外边距通常让各个浏览器样式的表现位置不同 */\nbody,\ndl,\ndt,\ndd,\nul,\nol,\nli,\nh1,\nh2,\nh3,\nh4,\nh5,\nh6,\npre,\ncode,\nform,\nfieldset,\nlegend,\ninput,\ntextarea,\np,\nblockquote,\nth,\ntd,\nhr,\nbutton,\narticle,\naside,\ndetails,\nfigcaption,\nfigure,\nfooter,\nheader,\nmenu,\nnav,\nsection {\n  margin: 0;\n  padding: 0;\n}\n/* 重设 HTML5 标签, IE 需要在 js 中 createElement(TAG) */\narticle,\naside,\ndetails,\nfigcaption,\nfigure,\nfooter,\nheader,\nmenu,\nnav,\nsection {\n  display: block;\n}\n/* HTML5 媒体文件跟 img 保持一致 */\naudio,\ncanvas,\nvideo {\n  display: inline-block;\n}\n/* 要注意表单元素并不继承父级 font 的问题 */\nbody,\nbutton,\ninput,\nselect,\ntextarea {\n  font: 300 1em/1.8 'PingFang SC', 'Lantinghei SC', 'Microsoft Yahei', 'Hiragino Sans GB', 'Microsoft Sans Serif', 'WenQuanYi Micro Hei', 'sans';\n}\nbutton::-moz-focus-inner,\ninput::-moz-focus-inner {\n  padding: 0;\n  border: 0;\n}\n/* 去掉各Table cell 的边距并让其边重合 */\ntable {\n  border-collapse: collapse;\n  border-spacing: 0;\n}\n/* 去除默认边框 */\nfieldset,\nimg {\n  border: 0;\n}\n/* 块/段落引用 */\nblockquote {\n  position: relative;\n  color: #999;\n  font-weight: 400;\n  border-left: 1px solid #1abc9c;\n  padding-left: 1em;\n  margin: 1em 0 1em 2em;\n}\n@media only screen and (max-width: 640px) {\n  blockquote {\n    margin: 1em 0;\n  }\n}\n/* Firefox 以外，元素没有下划线，需添加 */\nacronym,\nabbr {\n  border-bottom: 1px dotted;\n  font-variant: normal;\n}\n/* 添加鼠标问号，进一步确保应用的语义是正确的（要知道，交互他们也有洁癖，如果你不去掉，那得多花点口舌） */\nabbr {\n  cursor: help;\n}\n/* 一致的 del 样式 */\ndel {\n  text-decoration: line-through;\n}\naddress,\ncaption,\ncite,\ncode,\ndfn,\nem,\nth,\nvar {\n  font-style: normal;\n  font-weight: 400;\n}\n/* 去掉列表前的标识, li 会继承，大部分网站通常用列表来很多内容，所以应该当去 */\nul,\nol {\n  list-style: none;\n}\n/* 对齐是排版最重要的因素, 别让什么都居中 */\ncaption,\nth {\n  text-align: left;\n}\nq:before,\nq:after {\n  content: '';\n}\n/* 统一上标和下标 */\nsub,\nsup {\n  font-size: 75%;\n  line-height: 0;\n  position: relative;\n}\n:root sub,\n:root sup {\n  vertical-align: baseline;\n  /* for ie9 and other modern browsers */\n}\nsup {\n  top: -0.5em;\n}\nsub {\n  bottom: -0.25em;\n}\n/* 让链接在 hover 状态下显示下划线 */\na {\n  color: #1abc9c;\n}\na:hover {\n  text-decoration: underline;\n}\n.typo a {\n  border-bottom: 1px solid #1abc9c;\n}\n.typo a:hover {\n  border-bottom-color: #555;\n  color: #555;\n  text-decoration: none;\n}\n/* 默认不显示下划线，保持页面简洁 */\nins,\na {\n  text-decoration: none;\n}\n/* 专名号：虽然 u 已经重回 html5 Draft，但在所有浏览器中都是可以使用的，\n * 要做到更好，向后兼容的话，添加 class=\"typo-u\" 来显示专名号\n * 关于 <u> 标签：http://www.whatwg.org/specs/web-apps/current-work/multipage/text-level-semantics.html#the-u-element\n * 被放弃的是 4，之前一直搞错 http://www.w3.org/TR/html401/appendix/changes.html#idx-deprecated\n * 一篇关于 <u> 标签的很好文章：http://html5doctor.com/u-element/\n */\nu,\n.typo-u {\n  text-decoration: underline;\n}\n/* 标记，类似于手写的荧光笔的作用 */\nmark {\n  background: #fffdd1;\n  border-bottom: 1px solid #ffedce;\n  padding: 2px;\n  margin: 0 5px;\n}\n/* 代码片断 */\npre,\ncode,\npre tt {\n  font-family: Courier, 'Courier New', monospace;\n}\npre {\n  background: #f8f8f8;\n  border: 1px solid #ddd;\n  padding: 1em 1.5em;\n  display: block;\n  -webkit-overflow-scrolling: touch;\n}\n/* 一致化 horizontal rule */\nhr {\n  border: none;\n  border-bottom: 1px solid #cfcfcf;\n  margin-bottom: 0.8em;\n  height: 10px;\n}\n/* 底部印刷体、版本等标记 */\nsmall,\n.typo-small,\nfigcaption {\n  font-size: 0.9em;\n  color: #888;\n}\nstrong,\nb {\n  font-weight: bold;\n  color: #000;\n}\n/* 可拖动文件添加拖动手势 */\n[draggable] {\n  cursor: move;\n}\n.clearfix:before,\n.clearfix:after {\n  content: \"\";\n  display: table;\n}\n.clearfix:after {\n  clear: both;\n}\n.clearfix {\n  zoom: 1;\n}\n/* 强制文本换行 */\n.textwrap,\n.textwrap td,\n.textwrap th {\n  word-wrap: break-word;\n  word-break: break-all;\n}\n.textwrap-table {\n  table-layout: fixed;\n}\n/* 提供 serif 版本的字体设置: iOS 下中文自动 fallback 到 sans-serif */\n.serif {\n  font-family: Palatino, Optima, Georgia, serif;\n}\n/* 保证块/段落之间的空白隔行 */\n.typo p,\n.typo pre,\n.typo ul,\n.typo ol,\n.typo dl,\n.typo form,\n.typo hr,\n.typo table,\n.typo-p,\n.typo-pre,\n.typo-ul,\n.typo-ol,\n.typo-dl,\n.typo-form,\n.typo-hr,\n.typo-table,\nblockquote {\n  margin-bottom: 1.2em;\n}\nh1,\nh2,\nh3,\nh4,\nh5,\nh6 {\n  font-family: PingFang SC, Verdana, Helvetica Neue, Microsoft Yahei, Hiragino Sans GB, Microsoft Sans Serif, WenQuanYi Micro Hei, sans-serif;\n  font-weight: 100;\n  color: #000;\n  line-height: 1.35;\n}\n/* 标题应该更贴紧内容，并与其他块区分，margin 值要相应做优化 */\n.typo h1,\n.typo h2,\n.typo h3,\n.typo h4,\n.typo h5,\n.typo h6,\n.typo-h1,\n.typo-h2,\n.typo-h3,\n.typo-h4,\n.typo-h5,\n.typo-h6 {\n  margin-top: 1.2em;\n  margin-bottom: 0.6em;\n  line-height: 1.35;\n}\n.typo h1,\n.typo-h1 {\n  font-size: 2em;\n}\n.typo h2,\n.typo-h2 {\n  font-size: 1.8em;\n}\n.typo h3,\n.typo-h3 {\n  font-size: 1.6em;\n}\n.typo h4,\n.typo-h4 {\n  font-size: 1.4em;\n}\n.typo h5,\n.typo h6,\n.typo-h5,\n.typo-h6 {\n  font-size: 1.2em;\n}\n/* 在文章中，应该还原 ul 和 ol 的样式 */\n.typo ul,\n.typo-ul {\n  margin-left: 1.3em;\n  list-style: disc;\n}\n.typo ol,\n.typo-ol {\n  list-style: decimal;\n  margin-left: 1.9em;\n}\n.typo li ul,\n.typo li ol,\n.typo-ul ul,\n.typo-ul ol,\n.typo-ol ul,\n.typo-ol ol {\n  margin-bottom: 0.8em;\n  margin-left: 2em;\n}\n.typo li ul,\n.typo-ul ul,\n.typo-ol ul {\n  list-style: circle;\n}\n/* 同 ul/ol，在文章中应用 table 基本格式 */\n.typo table th,\n.typo table td,\n.typo-table th,\n.typo-table td,\n.typo table caption {\n  border: 1px solid #ddd;\n  padding: 0.5em 1em;\n  color: #666;\n}\n.typo table th,\n.typo-table th {\n  background: #fbfbfb;\n}\n.typo table thead th,\n.typo-table thead th {\n  background: #f1f1f1;\n}\n.typo table caption {\n  border-bottom: none;\n}\n/* 去除 webkit 中 input 和 textarea 的默认样式  */\n.typo-input,\n.typo-textarea {\n  -webkit-appearance: none;\n  border-radius: 0;\n}\n.typo-em,\n.typo em,\nlegend,\ncaption {\n  color: #000;\n  font-weight: inherit;\n}\n/* 着重号，只能在少量（少于100个字符）且全是全角字符的情况下使用 */\n.typo-em {\n  position: relative;\n}\n.typo-em:after {\n  position: absolute;\n  top: 0.65em;\n  left: 0;\n  width: 100%;\n  overflow: hidden;\n  white-space: nowrap;\n  content: \"\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\";\n}\n/* Responsive images */\n.typo img {\n  max-width: 100%;\n}\n::selection {\n  background: #fde6ba;\n  color: #000;\n}\nbutton,\ntextarea,\nselect {\n  outline: none;\n}\nbody,\nhtml {\n  overflow: hidden;\n}\nbody {\n  font-size: 15px !important;\n}\nh1,\nh2,\nh3,\nh4,\nh5,\nh6 {\n  font-family: 'Menlo', 'Monaco', 'Source Code Pro', 'Consolas', 'Inconsolata', 'Ubuntu Mono', 'DejaVu Sans Mono', 'Courier New', 'Droid Sans Mono', 'Hiragino Sans GB', '\\5FAE\\8F6F\\96C5\\9ED1', monospace !important;\n}\nh1 {\n  font-size: 26px;\n}\nh2 {\n  font-size: 22px;\n}\nh3 {\n  font-size: 18px;\n}\nh4 {\n  font-size: 14px;\n}\na {\n  font-size: 15px !important;\n  word-break: break-all !important;\n}\nul,\nol {\n  padding-left: 32px !important;\n  list-style-type: square !important;\n}\nul li span,\nol li span {\n  font-size: 14px !important;\n  color: #4a4a4a;\n}\nol {\n  list-style-type: decimal !important;\n}\n.topheader {\n  overflow: hidden;\n  -webkit-user-select: none;\n  height: 68px;\n  padding: 0 20px;\n  position: relative;\n  background: #499bea;\n  background: -moz-linear-gradient(left, #e5e5be 0, #003973 100%);\n  background: -webkit-gradient(linear, left, right, color-sleft(0%, #e5e5be), color-sleft(100%, #003973));\n  background: -webkit-linear-gradient(left, #e5e5be 0, #003973 100%);\n  background: -o-linear-gradient(left, #e5e5be 0, #003973 100%);\n  background: -ms-linear-gradient(left, #e5e5be 0, #003973 100%);\n  background: linear-gradient(to left, #e5e5be 0, #003973 100%);\n  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#e5e5be', endColorstr='#003973', GradientType=1);\n}\n.topheader h1 {\n  font-size: 30px;\n  line-height: 64px;\n  color: #FFF;\n  font-family: fantasy,cursive,consolas;\n  text-shadow: 1px 1px 1px #000, 1px 1px 3px #CCC;\n  display: inline-block;\n}\n.topheader span {\n  font-size: 13px;\n  display: inline-block;\n  margin-left: 0;\n  color: #E4E4E4;\n  position: relative;\n  top: 10px;\n}\n.topheader span a {\n  color: #E4E4E4;\n}\n.topheader a:hover {\n  color: #e58c7c;\n}\n.topheader ul {\n  position: absolute;\n  right: 20px;\n  top: 0;\n  list-style-type: none !important;\n  height: 64px;\n  line-height: 64px;\n}\n.topheader ul li {\n  float: left;\n  margin-left: 20px;\n  font-family: consolas;\n}\n.topheader ul li a {\n  color: #555;\n  display: inline-block;\n  height: 100%;\n  line-height: 64px;\n}\n.topheader ul li a {\n  color: #555;\n}\n.topheader ul li a:hover {\n  color: #000;\n  text-decoration: underline;\n}\n.topheader ul li .icon {\n  margin-right: 4px;\n  vertical-align: middle;\n  transition: none;\n}\ntextarea {\n  width: 100%;\n  margin: 0;\n  padding: 1em;\n  overflow: auto;\n  border: none;\n  background-color: #fff;\n  font-family: courier, monospace;\n  font-size: inherit;\n  color: inherit;\n  outline: none;\n  background: #333;\n  color: #fff;\n  position: absolute;\n  top: 64px;\n  left: 0;\n  right: 0;\n  bottom: 0;\n  resize: none;\n  z-index: 2;\n  font-size: 15px;\n}\n#output {\n  position: absolute;\n  top: 64px;\n  left: 0;\n  right: 0;\n  bottom: 0;\n  resize: none;\n  z-index: 1;\n  background: #EEE;\n  overflow: hidden;\n}\n#output .wrapper {\n  overflow-y: auto;\n  height: 100%;\n  margin: 20px auto;\n  background: #FFF;\n  padding: 1rem;\n  width: 800px;\n  padding-bottom: 100px;\n  max-width: 100%;\n  -webkit-overflow-scrolling: touch;\n}\n.github-star {\n  position: relative;\n  top: 5px;\n}\n.btn {\n  border: none;\n  color: white;\n  padding: 5px 25px;\n  text-align: center;\n  text-decoration: none;\n  display: inline-block;\n  font-size: 16px;\n  box-shadow: 1px 1px 3px #666;\n}\n.convert-button,\n.copy-button {\n  position: absolute;\n  right: 110px;\n  z-index: 3;\n  top: 80px;\n  border-radius: 3px;\n  background-color: #3a6586;\n}\n.convert-button {\n  right: 15px;\n  background-color: #e3e4bd;\n  color: #555;\n}\n.themes-config {\n  margin: 0 auto;\n  width: 800px;\n  max-width: 100%;\n  padding-top: 20px;\n  padding-left: 8px;\n}\n.themes-config .theme-wrapper {\n  margin-top: 8px;\n  display: inline-block;\n  margin-right: 20px;\n}\n.themes-config .theme-wrapper select {\n  background: #FFF;\n}\n@media screen and (max-width: 641px) {\n  .topheader ul {\n    display: none;\n  }\n  .btn {\n    padding: 2px 15px;\n    font-size: 14px;\n  }\n  .copy-button {\n    right: 80px;\n  }\n}\n* {\n  box-sizing: border-box;\n}\nbody {\n  padding: 0;\n  margin: 0;\n  font-family: Helvetica, Arial, sans-serif;\n  font-size: 16px;\n  line-height: 1.5;\n  color: #50616D;\n}\na {\n  color: #1e6bb8;\n  text-decoration: none;\n}\na:hover {\n  text-decoration: underline;\n}\n:first-child {\n  margin-top: 0;\n}\nimg {\n  border-radius: 6px;\n  border: 2px solid #EEE;\n  max-width: 100%;\n}\nh1,\nh2,\nh3,\nh4,\nh5,\nh6 {\n  margin-top: 1.5rem;\n  margin-bottom: 1rem;\n  font-weight: normal;\n  color: #159957;\n}\np {\n  margin-bottom: 15px;\n  margin-top: 15px;\n}\npre p {\n  margin: 0;\n}\npre ul,\npre ol {\n  margin: 0;\n  padding-top: 12px;\n  padding-bottom: 12px;\n}\npre code,\npre tt {\n  display: inline;\n  padding: 0;\n  margin: 0;\n  overflow: initial;\n  line-height: inherit;\n  word-wrap: normal;\n  border: 0;\n}\npre code:before,\npre code:after,\npre tt:before,\npre tt:after {\n  content: normal;\n}\nul,\nol {\n  margin-top: 0;\n}\nblockquote {\n  padding: 15px 1rem;\n  font-size: 14px;\n  line-height: 18px;\n  padding-right: 15px;\n  margin-left: 0;\n  color: #819198;\n  border-left: 6px solid #dce6f0;\n  background: #f2f7fb;\n}\nblockquote > :first-child {\n  margin-top: 0;\n}\nblockquote > :last-child {\n  margin-bottom: 0;\n}\ntable {\n  display: block;\n  width: 100%;\n  overflow: auto;\n  word-break: normal;\n  word-break: keep-all;\n}\ntable th {\n  font-weight: bold;\n}\ntable th,\ntable td {\n  padding: 0.5rem 1rem;\n  border: 1px solid #e9ebec;\n}\ndl {\n  padding: 0;\n}\ndl dt {\n  padding: 0;\n  margin-top: 1rem;\n  font-size: 1rem;\n  font-weight: bold;\n}\ndl dd {\n  padding: 0;\n  margin-bottom: 1rem;\n}\nhr {\n  height: 1px;\n  margin: 1.5rem 0;\n  border: none;\n  border-top: 1px dashed #A5A5A5;\n}\n.hljs {\n  display: block;\n  overflow-x: auto;\n  padding: 0.5em;\n  background: #F0F0F0;\n}\n.hljs,\n.hljs-subst {\n  color: #444;\n}\n.hljs-comment {\n  color: #888888;\n}\n.hljs-attribute,\n.hljs-doctag,\n.hljs-keyword,\n.hljs-meta-keyword,\n.hljs-name,\n.hljs-selector-tag {\n  font-weight: bold;\n}\n.hljs-deletion,\n.hljs-number,\n.hljs-quote,\n.hljs-selector-class,\n.hljs-selector-id,\n.hljs-string,\n.hljs-template-tag,\n.hljs-type {\n  color: #880000;\n}\n.hljs-section,\n.hljs-title {\n  color: #880000;\n  font-weight: bold;\n}\n.hljs-link,\n.hljs-regexp,\n.hljs-selector-attr,\n.hljs-selector-pseudo,\n.hljs-symbol,\n.hljs-template-variable,\n.hljs-variable {\n  color: #BC6060;\n}\n.hljs-literal {\n  color: #78A960;\n}\n.hljs-addition,\n.hljs-built_in,\n.hljs-bullet,\n.hljs-code {\n  color: #397300;\n}\n.hljs-meta {\n  color: #1f7199;\n}\n.hljs-meta-string {\n  color: #4d99bf;\n}\n.hljs-emphasis {\n  font-style: italic;\n}\n.hljs-strong {\n  font-weight: bold;\n}\n.pln {\n  color: #000;\n}\n@media screen {\n  .str {\n    color: #080;\n  }\n  .kwd {\n    color: #008;\n  }\n  .com {\n    color: #800;\n  }\n  .typ {\n    color: #606;\n  }\n  .lit {\n    color: #066;\n  }\n  .pun,\n  .opn,\n  .clo {\n    color: #660;\n  }\n  .tag {\n    color: #008;\n  }\n  .atn {\n    color: #606;\n  }\n  .atv {\n    color: #080;\n  }\n  .dec,\n  .var {\n    color: #606;\n  }\n  .fun {\n    color: red;\n  }\n}\n@media print, projection {\n  .str {\n    color: #060;\n  }\n  .kwd {\n    color: #006;\n    font-weight: bold;\n  }\n  .com {\n    color: #600;\n    font-style: italic;\n  }\n  .typ {\n    color: #404;\n    font-weight: bold;\n  }\n  .lit {\n    color: #044;\n  }\n  .pun,\n  .opn,\n  .clo {\n    color: #440;\n  }\n  .tag {\n    color: #006;\n    font-weight: bold;\n  }\n  .atn {\n    color: #404;\n  }\n  .atv {\n    color: #060;\n  }\n}\n.pln {\n  color: #000;\n}\n@media screen {\n  .str {\n    color: #080;\n  }\n  .kwd {\n    color: #008;\n  }\n  .com {\n    color: #800;\n  }\n  .typ {\n    color: #606;\n  }\n  .lit {\n    color: #066;\n  }\n  .pun,\n  .opn,\n  .clo {\n    color: #660;\n  }\n  .tag {\n    color: #008;\n  }\n  .atn {\n    color: #606;\n  }\n  .atv {\n    color: #080;\n  }\n  .dec,\n  .var {\n    color: #606;\n  }\n  .fun {\n    color: red;\n  }\n}\n@media print, projection {\n  .str {\n    color: #060;\n  }\n  .kwd {\n    color: #006;\n    font-weight: bold;\n  }\n  .com {\n    color: #600;\n    font-style: italic;\n  }\n  .typ {\n    color: #404;\n    font-weight: bold;\n  }\n  .lit {\n    color: #044;\n  }\n  .pun,\n  .opn,\n  .clo {\n    color: #440;\n  }\n  .tag {\n    color: #006;\n    font-weight: bold;\n  }\n  .atn {\n    color: #404;\n  }\n  .atv {\n    color: #060;\n  }\n}\npre.prettyprint {\n  border-radius: 0;\n  font-family: 'consolas', 'menlo', 'courier', 'monospace', 'Microsoft Yahei' !important;\n  overflow-y: auto;\n}\npre.prettyprint {\n  border-radius: 0;\n  font-family: 'consolas', 'menlo', 'courier', 'monospace', 'Microsoft Yahei' !important;\n  overflow-y: auto;\n}\npre.prettyprint.linenums {\n  border: 1px solid #e2e2e2 !important;\n  padding: 8px 0 6px;\n}\nol.linenums {\n  margin-top: 0;\n  margin-bottom: 0;\n  overflow-y: auto;\n  -webkit-overflow-scrolling: touch;\n  list-style-type: none !important;\n}\nol.linenums li > span {\n  word-break: inherit !important;\n  white-space: nowrap !important;\n  display: block;\n}\nol.linenums li > span > span {\n  word-break: inherit !important;\n  white-space: nowrap !important;\n  display: block;\n}\nol.linenums li code {\n  line-height: 20px !important;\n  margin-left: -20px;\n  font-family: inherit !important;\n  white-space: pre !important;\n  display: flex;\n}\nol.linenums li code span {\n  white-space: inherit !important;\n  font-size: 13px !important;\n  line-height: 20px;\n  font-family: 'consolas', 'menlo', 'courier', 'monospace', 'Microsoft Yahei' !important;\n}\n.code-in-text {\n  color: #585858;\n  background: #f3f1f1;\n}\n.code-in-text span {\n  color: #585858;\n  background: #f3f1f1;\n  display: inline-block;\n  padding: 0 2px;\n  font-size: 14px;\n  font-family: 'consolas', 'menlo', 'courier', 'monospace', 'Microsoft Yahei' !important;\n}\n.prettyprint.code-in-text {\n  background: #f3f1f1;\n  font-family: 'consolas', 'menlo', 'courier', 'monospace', 'Microsoft Yahei' !important;\n}\nli.L0,\nli.L1,\nli.L2,\nli.L3,\nli.L4,\nli.L5,\nli.L6,\nli.L7,\nli.L8,\nli.L9 {\n  list-style-type: none !important;\n}\nli.L1,\nli.L3,\nli.L5,\nli.L7,\nli.L9 {\n  list-style-type: none !important;\n  background: transparent !important;\n}\n.prettyprint {\n  font-family: Consolas, Menlo, Courier, monospace;\n}\n.prettyprint pre p {\n  min-height: 10px;\n}\n#list1 ul {\n  padding-left: 10px;\n}\nul li.task-list-list {\n  list-style-type: none;\n  padding: 0 10px;\n}\nul,\nol {\n  margin: 0;\n  padding: 0;\n  padding-left: 40px;\n}\n.task-list-list {\n  margin: 0;\n  padding: 0;\n}\ntable {\n  display: table;\n  width: 100%;\n}\ntable tr:nth-child(2n) {\n  background-color: #f8f8f8;\n}\n.task-list-list.checked {\n  color: #159957;\n}\n.task-list-list.uncheck {\n  color: #bfc1bf;\n}\n.task-list-list img {\n  height: 20px;\n  width: 20px;\n  margin: 0 10px;\n  top: 4px;\n  position: relative;\n}\nh1.super {\n  white-space: normal;\n  border: none;\n  margin: 5px 0 0;\n  padding: 10px;\n  font-size: 24px;\n  line-height: 20px;\n  border-left-width: 6px;\n  border-left-style: solid;\n  border-radius: 3px;\n  color: #FFFBF0;\n  border-left-color: #30DFF3;\n  background-color: #4B5CC4;\n}\nh2.super {\n  white-space: normal;\n  border: none;\n  margin: 5px 0 0;\n  padding: 10px;\n  font-size: 20px;\n  line-height: 20px;\n  border-left-width: 12px;\n  border-left-style: solid;\n  border-radius: 3px;\n  color: #FFFBF0;\n  border-left-color: #30DFF3;\n  background-color: #4B5CC4;\n}\nh3.super {\n  white-space: normal;\n  border: none;\n  margin: 5px 0 0;\n  padding: 10px;\n  font-size: 18px;\n  line-height: 20px;\n  border-left-width: 18px;\n  border-left-style: solid;\n  border-radius: 3px;\n  color: #FFFBF0;\n  border-left-color: #30DFF3;\n  background-color: #4B5CC4;\n}\nh4.super {\n  white-space: normal;\n  border: none;\n  margin: 5px 0 0;\n  padding: 10px;\n  font-size: 16px;\n  line-height: 20px;\n  border-left-width: 24px;\n  border-left-style: solid;\n  border-radius: 3px;\n  color: #FFFBF0;\n  border-left-color: #30DFF3;\n  background-color: #4B5CC4;\n}\nruby {\n  background-color: rgba(67, 193, 105, 0.5);\n  margin: 4px;\n  padding-right: 2px;\n  padding-left: 2px;\n}\nruby rt {\n  font-style: italic;\n  background-color: rgba(67, 193, 105, 0.2);\n}\n.icon_uncheck,\n.icon_check {\n  display: inline-block;\n  vertical-align: middle;\n  width: 20px;\n  height: 20px;\n  background-repeat: no-repeat;\n  background-size: contain;\n  margin-right: 4px;\n}\n.icon_check {\n  background-image: url(" + __webpack_require__(7) + ");\n}\n.icon_uncheck {\n  background-image: url(" + __webpack_require__(8) + ");\n}\n", ""]);
+
+// exports
+
+
+/***/ }),
+/* 6 */
+/***/ (function(module, exports, __webpack_require__) {
+
+exports = module.exports = __webpack_require__(2)();
+// imports
+
+
+// module
+exports.push([module.i, "/*! Color themes for Google Code Prettify | MIT License | github.com/jmblog/color-themes-for-google-code-prettify */\r\n.prettyprint {\r\n  background: #1d1f21;\r\n  font-family: Menlo, \"Bitstream Vera Sans Mono\", \"DejaVu Sans Mono\", Monaco, Consolas, monospace;\r\n  border: 0 !important;\r\n}\r\n\r\n.pln {\r\n  color: #c5c8c6;\r\n}\r\n\r\n/* Specify class=linenums on a pre to get line numbering */\r\nol.linenums {\r\n  margin-top: 0;\r\n  margin-bottom: 0;\r\n  color: #969896;\r\n}\r\n\r\nli.L0,\r\nli.L1,\r\nli.L2,\r\nli.L3,\r\nli.L4,\r\nli.L5,\r\nli.L6,\r\nli.L7,\r\nli.L8,\r\nli.L9 {\r\n  padding-left: 1em;\r\n  background-color: #1d1f21;\r\n  list-style-type: decimal;\r\n}\r\n\r\n@media screen {\r\n\r\n  /* string content */\r\n\r\n  .str {\r\n    color: #b5bd68;\r\n  }\r\n\r\n  /* keyword */\r\n\r\n  .kwd {\r\n    color: #b294bb;\r\n  }\r\n\r\n  /* comment */\r\n\r\n  .com {\r\n    color: #969896;\r\n  }\r\n\r\n  /* type name */\r\n\r\n  .typ {\r\n    color: #81a2be;\r\n  }\r\n\r\n  /* literal value */\r\n\r\n  .lit {\r\n    color: #de935f;\r\n  }\r\n\r\n  /* punctuation */\r\n\r\n  .pun {\r\n    color: #c5c8c6;\r\n  }\r\n\r\n  /* lisp open bracket */\r\n\r\n  .opn {\r\n    color: #c5c8c6;\r\n  }\r\n\r\n  /* lisp close bracket */\r\n\r\n  .clo {\r\n    color: #c5c8c6;\r\n  }\r\n\r\n  /* markup tag name */\r\n\r\n  .tag {\r\n    color: #cc6666;\r\n  }\r\n\r\n  /* markup attribute name */\r\n\r\n  .atn {\r\n    color: #de935f;\r\n  }\r\n\r\n  /* markup attribute value */\r\n\r\n  .atv {\r\n    color: #8abeb7;\r\n  }\r\n\r\n  /* declaration */\r\n\r\n  .dec {\r\n    color: #de935f;\r\n  }\r\n\r\n  /* variable name */\r\n\r\n  .var {\r\n    color: #cc6666;\r\n  }\r\n\r\n  /* function name */\r\n\r\n  .fun {\r\n    color: #81a2be;\r\n  }\r\n}\r\n", ""]);
+
+// exports
+
+
+/***/ }),
+/* 7 */
+/***/ (function(module, exports) {
+
+module.exports = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAABUFBMVEUAAAAVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcO2ZyiAAAAb3RSTlMAAQIDBQYHCAkKDQ8QERITFBUWFxgZGxwdHiAhIiMoKissLTM4PkBBREpMUFFSVFZZW1xdXl9hYmNvc3V4e35/goOMkZeYmpudnqCio6WmqKq1t7m6vsDBw8zOz9HT19nc3uLk6Onr7e/x8/X5+/2VuNh1AAACKUlEQVRYw+3W61/SUBjA8WcIlpXZRbuhZmVZGJXdtQvaTQuz1LQMs1IMFMbv/3/Xiw04O9vZzvzUO593HM739xkbsIkczj+b47delpdXYmd5/tmNIwZ+/guWMxfpp7Ge3+0jPpfp+gV7v3dKRESc11C92PbP7X3d958B3BHPXwagVuhLPNGZY1nPf/JyfmET4Guv/QVre7+QB9jOpfBL3Y/k5v0rMH4wD/WsrAKtjL3/GDyt12QH2Dqw56oArFn7Rc3/yqQKhPyffkkTcMqar/VLmkC0tw84H3R/UtIETF4PHL37dDDSvzd4LXCpAUym8cFA3gXgTsjrfxn1AYkKDLv++0XNz5u9GhhxOzuK1l4JDLnKnqKtVwI/A7tud/y7WN8N5LR9fsF5G/2/GnEEDW3npJVXAtcJF5w3SV69CvdChbA/LTEBmdILm8k++E2cSrgv+V69rWm/hfs2fo5XxkBcYe+Mt2UWVswBeWDy+76fIT5gKuyf9d9vJQWiCx0vJAbkYZy3CYQLircKyCOztwsEC41BSR2QxyZvG+gWNG8dkCe+H5IDBrxCyIcCu0Al+m52s0llIPLnu6i8XgeajuF+mA2v9QGUlIUSwKhYTwGgoCyMAWxYP2X11gBOKCuZKsCCZSH3LXzSJwDYGHWSeWZ8G4ALwWX/ybFZWUuYrZa3c0br9nwn1ZRDR9azlMa/iPqsE1Vb/uOK4fSMldZ3k/DO6vSwHM5/mL+n5I2BF31JYgAAAABJRU5ErkJggg=="
+
+/***/ }),
+/* 8 */
+/***/ (function(module, exports) {
+
+module.exports = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAAt1BMVEUAAAC/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+rCW7jAAAAPHRSTlMAAQMECAkKCw4QERweJiorLDg6O0JFRk1QUV5hZmhpa36AhYiOj5udpbC1t7m+x9Ha3uLk6Ovt7/H3+/3V7YVuAAABMElEQVRYw+2Xx1YCMRhGv2Fo0qSDFEWqIL0I4n3/53IR5qC4IXGbu5pZ3DuT/2SRSBGZWncwntzB+LVdTuiGoL7FimXhl59bY8178upXceGQjfwGbnxdCnlcOSQlKTyat1UpHugugnTz4zIHSeqY52fZEL4ZqyDFzgC0ZIkpLKUiAFNbX6FZRUI9ALLWATUBKGsGcLL3lQagrQ3A3CEQAPAqACYOAWOO/xuY+IAP+IAP+IAP+IAP+MCfwFh7t4NqdMwbaAGwcwjEAehqCMCDfaAEQE0VAPr2gRUAmcuf8GjrvwCwlTQC4NOy0DLfrUtKXS5AfYs5ZKfGWQdSdPAHdtPJXcxPkZEzvb7rra0abQnHQuO6picH/Zj/OZXUyFI/d8LbnVkZLvb3yZtZrxiLvG/BQxobYX07aQAAAABJRU5ErkJggg=="
+
+/***/ }),
+/* 9 */
+/***/ (function(module, exports) {
+
+/*
+	MIT License http://www.opensource.org/licenses/mit-license.php
+	Author Tobias Koppers @sokra
+*/
+var stylesInDom = {},
+	memoize = function(fn) {
+		var memo;
+		return function () {
+			if (typeof memo === "undefined") memo = fn.apply(this, arguments);
+			return memo;
+		};
+	},
+	isOldIE = memoize(function() {
+		return /msie [6-9]\b/.test(self.navigator.userAgent.toLowerCase());
+	}),
+	getHeadElement = memoize(function () {
+		return document.head || document.getElementsByTagName("head")[0];
+	}),
+	singletonElement = null,
+	singletonCounter = 0,
+	styleElementsInsertedAtTop = [];
+
+module.exports = function(list, options) {
+	if(typeof DEBUG !== "undefined" && DEBUG) {
+		if(typeof document !== "object") throw new Error("The style-loader cannot be used in a non-browser environment");
+	}
+
+	options = options || {};
+	// Force single-tag solution on IE6-9, which has a hard limit on the # of <style>
+	// tags it will allow on a page
+	if (typeof options.singleton === "undefined") options.singleton = isOldIE();
+
+	// By default, add <style> tags to the bottom of <head>.
+	if (typeof options.insertAt === "undefined") options.insertAt = "bottom";
+
+	var styles = listToStyles(list);
+	addStylesToDom(styles, options);
+
+	return function update(newList) {
+		var mayRemove = [];
+		for(var i = 0; i < styles.length; i++) {
+			var item = styles[i];
+			var domStyle = stylesInDom[item.id];
+			domStyle.refs--;
+			mayRemove.push(domStyle);
+		}
+		if(newList) {
+			var newStyles = listToStyles(newList);
+			addStylesToDom(newStyles, options);
+		}
+		for(var i = 0; i < mayRemove.length; i++) {
+			var domStyle = mayRemove[i];
+			if(domStyle.refs === 0) {
+				for(var j = 0; j < domStyle.parts.length; j++)
+					domStyle.parts[j]();
+				delete stylesInDom[domStyle.id];
+			}
+		}
+	};
+}
+
+function addStylesToDom(styles, options) {
+	for(var i = 0; i < styles.length; i++) {
+		var item = styles[i];
+		var domStyle = stylesInDom[item.id];
+		if(domStyle) {
+			domStyle.refs++;
+			for(var j = 0; j < domStyle.parts.length; j++) {
+				domStyle.parts[j](item.parts[j]);
+			}
+			for(; j < item.parts.length; j++) {
+				domStyle.parts.push(addStyle(item.parts[j], options));
+			}
+		} else {
+			var parts = [];
+			for(var j = 0; j < item.parts.length; j++) {
+				parts.push(addStyle(item.parts[j], options));
+			}
+			stylesInDom[item.id] = {id: item.id, refs: 1, parts: parts};
+		}
+	}
+}
+
+function listToStyles(list) {
+	var styles = [];
+	var newStyles = {};
+	for(var i = 0; i < list.length; i++) {
+		var item = list[i];
+		var id = item[0];
+		var css = item[1];
+		var media = item[2];
+		var sourceMap = item[3];
+		var part = {css: css, media: media, sourceMap: sourceMap};
+		if(!newStyles[id])
+			styles.push(newStyles[id] = {id: id, parts: [part]});
+		else
+			newStyles[id].parts.push(part);
+	}
+	return styles;
+}
+
+function insertStyleElement(options, styleElement) {
+	var head = getHeadElement();
+	var lastStyleElementInsertedAtTop = styleElementsInsertedAtTop[styleElementsInsertedAtTop.length - 1];
+	if (options.insertAt === "top") {
+		if(!lastStyleElementInsertedAtTop) {
+			head.insertBefore(styleElement, head.firstChild);
+		} else if(lastStyleElementInsertedAtTop.nextSibling) {
+			head.insertBefore(styleElement, lastStyleElementInsertedAtTop.nextSibling);
+		} else {
+			head.appendChild(styleElement);
+		}
+		styleElementsInsertedAtTop.push(styleElement);
+	} else if (options.insertAt === "bottom") {
+		head.appendChild(styleElement);
+	} else {
+		throw new Error("Invalid value for parameter 'insertAt'. Must be 'top' or 'bottom'.");
+	}
+}
+
+function removeStyleElement(styleElement) {
+	styleElement.parentNode.removeChild(styleElement);
+	var idx = styleElementsInsertedAtTop.indexOf(styleElement);
+	if(idx >= 0) {
+		styleElementsInsertedAtTop.splice(idx, 1);
+	}
+}
+
+function createStyleElement(options) {
+	var styleElement = document.createElement("style");
+	styleElement.type = "text/css";
+	insertStyleElement(options, styleElement);
+	return styleElement;
+}
+
+function createLinkElement(options) {
+	var linkElement = document.createElement("link");
+	linkElement.rel = "stylesheet";
+	insertStyleElement(options, linkElement);
+	return linkElement;
+}
+
+function addStyle(obj, options) {
+	var styleElement, update, remove;
+
+	if (options.singleton) {
+		var styleIndex = singletonCounter++;
+		styleElement = singletonElement || (singletonElement = createStyleElement(options));
+		update = applyToSingletonTag.bind(null, styleElement, styleIndex, false);
+		remove = applyToSingletonTag.bind(null, styleElement, styleIndex, true);
+	} else if(obj.sourceMap &&
+		typeof URL === "function" &&
+		typeof URL.createObjectURL === "function" &&
+		typeof URL.revokeObjectURL === "function" &&
+		typeof Blob === "function" &&
+		typeof btoa === "function") {
+		styleElement = createLinkElement(options);
+		update = updateLink.bind(null, styleElement);
+		remove = function() {
+			removeStyleElement(styleElement);
+			if(styleElement.href)
+				URL.revokeObjectURL(styleElement.href);
+		};
+	} else {
+		styleElement = createStyleElement(options);
+		update = applyToTag.bind(null, styleElement);
+		remove = function() {
+			removeStyleElement(styleElement);
+		};
+	}
+
+	update(obj);
+
+	return function updateStyle(newObj) {
+		if(newObj) {
+			if(newObj.css === obj.css && newObj.media === obj.media && newObj.sourceMap === obj.sourceMap)
+				return;
+			update(obj = newObj);
+		} else {
+			remove();
+		}
+	};
+}
+
+var replaceText = (function () {
+	var textStore = [];
+
+	return function (index, replacement) {
+		textStore[index] = replacement;
+		return textStore.filter(Boolean).join('\n');
+	};
+})();
+
+function applyToSingletonTag(styleElement, index, remove, obj) {
+	var css = remove ? "" : obj.css;
+
+	if (styleElement.styleSheet) {
+		styleElement.styleSheet.cssText = replaceText(index, css);
+	} else {
+		var cssNode = document.createTextNode(css);
+		var childNodes = styleElement.childNodes;
+		if (childNodes[index]) styleElement.removeChild(childNodes[index]);
+		if (childNodes.length) {
+			styleElement.insertBefore(cssNode, childNodes[index]);
+		} else {
+			styleElement.appendChild(cssNode);
+		}
+	}
+}
+
+function applyToTag(styleElement, obj) {
+	var css = obj.css;
+	var media = obj.media;
+
+	if(media) {
+		styleElement.setAttribute("media", media)
+	}
+
+	if(styleElement.styleSheet) {
+		styleElement.styleSheet.cssText = css;
+	} else {
+		while(styleElement.firstChild) {
+			styleElement.removeChild(styleElement.firstChild);
+		}
+		styleElement.appendChild(document.createTextNode(css));
+	}
+}
+
+function updateLink(linkElement, obj) {
+	var css = obj.css;
+	var sourceMap = obj.sourceMap;
+
+	if(sourceMap) {
+		// http://stackoverflow.com/a/26603875
+		css += "\n/*# sourceMappingURL=data:application/json;base64," + btoa(unescape(encodeURIComponent(JSON.stringify(sourceMap)))) + " */";
+	}
+
+	var blob = new Blob([css], { type: "text/css" });
+
+	var oldSrc = linkElement.href;
+
+	linkElement.href = URL.createObjectURL(blob);
+
+	if(oldSrc)
+		URL.revokeObjectURL(oldSrc);
+}
+
+
+/***/ }),
+/* 10 */
+/***/ (function(module, exports, __webpack_require__) {
+
 var require;var require;/*!
  * clipboard.js v1.5.15
  * https://zenorocha.github.io/clipboard.js
@@ -12827,7 +13253,195 @@ var require;var require;/*!
 !function(e){if(true)module.exports=e();else if("function"==typeof define&&define.amd)define([],e);else{var t;t="undefined"!=typeof window?window:"undefined"!=typeof global?global:"undefined"!=typeof self?self:this,t.Clipboard=e()}}(function(){var e,t,n;return function e(t,n,i){function o(a,c){if(!n[a]){if(!t[a]){var l="function"==typeof require&&require;if(!c&&l)return require(a,!0);if(r)return r(a,!0);var s=new Error("Cannot find module '"+a+"'");throw s.code="MODULE_NOT_FOUND",s}var u=n[a]={exports:{}};t[a][0].call(u.exports,function(e){var n=t[a][1][e];return o(n?n:e)},u,u.exports,e,t,n,i)}return n[a].exports}for(var r="function"==typeof require&&require,a=0;a<i.length;a++)o(i[a]);return o}({1:[function(e,t,n){function i(e,t){for(;e&&e!==document;){if(e.matches(t))return e;e=e.parentNode}}if(Element&&!Element.prototype.matches){var o=Element.prototype;o.matches=o.matchesSelector||o.mozMatchesSelector||o.msMatchesSelector||o.oMatchesSelector||o.webkitMatchesSelector}t.exports=i},{}],2:[function(e,t,n){function i(e,t,n,i,r){var a=o.apply(this,arguments);return e.addEventListener(n,a,r),{destroy:function(){e.removeEventListener(n,a,r)}}}function o(e,t,n,i){return function(n){n.delegateTarget=r(n.target,t),n.delegateTarget&&i.call(e,n)}}var r=e("./closest");t.exports=i},{"./closest":1}],3:[function(e,t,n){n.node=function(e){return void 0!==e&&e instanceof HTMLElement&&1===e.nodeType},n.nodeList=function(e){var t=Object.prototype.toString.call(e);return void 0!==e&&("[object NodeList]"===t||"[object HTMLCollection]"===t)&&"length"in e&&(0===e.length||n.node(e[0]))},n.string=function(e){return"string"==typeof e||e instanceof String},n.fn=function(e){var t=Object.prototype.toString.call(e);return"[object Function]"===t}},{}],4:[function(e,t,n){function i(e,t,n){if(!e&&!t&&!n)throw new Error("Missing required arguments");if(!c.string(t))throw new TypeError("Second argument must be a String");if(!c.fn(n))throw new TypeError("Third argument must be a Function");if(c.node(e))return o(e,t,n);if(c.nodeList(e))return r(e,t,n);if(c.string(e))return a(e,t,n);throw new TypeError("First argument must be a String, HTMLElement, HTMLCollection, or NodeList")}function o(e,t,n){return e.addEventListener(t,n),{destroy:function(){e.removeEventListener(t,n)}}}function r(e,t,n){return Array.prototype.forEach.call(e,function(e){e.addEventListener(t,n)}),{destroy:function(){Array.prototype.forEach.call(e,function(e){e.removeEventListener(t,n)})}}}function a(e,t,n){return l(document.body,e,t,n)}var c=e("./is"),l=e("delegate");t.exports=i},{"./is":3,delegate:2}],5:[function(e,t,n){function i(e){var t;if("SELECT"===e.nodeName)e.focus(),t=e.value;else if("INPUT"===e.nodeName||"TEXTAREA"===e.nodeName)e.focus(),e.setSelectionRange(0,e.value.length),t=e.value;else{e.hasAttribute("contenteditable")&&e.focus();var n=window.getSelection(),i=document.createRange();i.selectNodeContents(e),n.removeAllRanges(),n.addRange(i),t=n.toString()}return t}t.exports=i},{}],6:[function(e,t,n){function i(){}i.prototype={on:function(e,t,n){var i=this.e||(this.e={});return(i[e]||(i[e]=[])).push({fn:t,ctx:n}),this},once:function(e,t,n){function i(){o.off(e,i),t.apply(n,arguments)}var o=this;return i._=t,this.on(e,i,n)},emit:function(e){var t=[].slice.call(arguments,1),n=((this.e||(this.e={}))[e]||[]).slice(),i=0,o=n.length;for(i;i<o;i++)n[i].fn.apply(n[i].ctx,t);return this},off:function(e,t){var n=this.e||(this.e={}),i=n[e],o=[];if(i&&t)for(var r=0,a=i.length;r<a;r++)i[r].fn!==t&&i[r].fn._!==t&&o.push(i[r]);return o.length?n[e]=o:delete n[e],this}},t.exports=i},{}],7:[function(t,n,i){!function(o,r){if("function"==typeof e&&e.amd)e(["module","select"],r);else if("undefined"!=typeof i)r(n,t("select"));else{var a={exports:{}};r(a,o.select),o.clipboardAction=a.exports}}(this,function(e,t){"use strict";function n(e){return e&&e.__esModule?e:{default:e}}function i(e,t){if(!(e instanceof t))throw new TypeError("Cannot call a class as a function")}var o=n(t),r="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(e){return typeof e}:function(e){return e&&"function"==typeof Symbol&&e.constructor===Symbol&&e!==Symbol.prototype?"symbol":typeof e},a=function(){function e(e,t){for(var n=0;n<t.length;n++){var i=t[n];i.enumerable=i.enumerable||!1,i.configurable=!0,"value"in i&&(i.writable=!0),Object.defineProperty(e,i.key,i)}}return function(t,n,i){return n&&e(t.prototype,n),i&&e(t,i),t}}(),c=function(){function e(t){i(this,e),this.resolveOptions(t),this.initSelection()}return a(e,[{key:"resolveOptions",value:function e(){var t=arguments.length>0&&void 0!==arguments[0]?arguments[0]:{};this.action=t.action,this.emitter=t.emitter,this.target=t.target,this.text=t.text,this.trigger=t.trigger,this.selectedText=""}},{key:"initSelection",value:function e(){this.text?this.selectFake():this.target&&this.selectTarget()}},{key:"selectFake",value:function e(){var t=this,n="rtl"==document.documentElement.getAttribute("dir");this.removeFake(),this.fakeHandlerCallback=function(){return t.removeFake()},this.fakeHandler=document.body.addEventListener("click",this.fakeHandlerCallback)||!0,this.fakeElem=document.createElement("textarea"),this.fakeElem.style.fontSize="12pt",this.fakeElem.style.border="0",this.fakeElem.style.padding="0",this.fakeElem.style.margin="0",this.fakeElem.style.position="absolute",this.fakeElem.style[n?"right":"left"]="-9999px";var i=window.pageYOffset||document.documentElement.scrollTop;this.fakeElem.addEventListener("focus",window.scrollTo(0,i)),this.fakeElem.style.top=i+"px",this.fakeElem.setAttribute("readonly",""),this.fakeElem.value=this.text,document.body.appendChild(this.fakeElem),this.selectedText=(0,o.default)(this.fakeElem),this.copyText()}},{key:"removeFake",value:function e(){this.fakeHandler&&(document.body.removeEventListener("click",this.fakeHandlerCallback),this.fakeHandler=null,this.fakeHandlerCallback=null),this.fakeElem&&(document.body.removeChild(this.fakeElem),this.fakeElem=null)}},{key:"selectTarget",value:function e(){this.selectedText=(0,o.default)(this.target),this.copyText()}},{key:"copyText",value:function e(){var t=void 0;try{t=document.execCommand(this.action)}catch(e){t=!1}this.handleResult(t)}},{key:"handleResult",value:function e(t){this.emitter.emit(t?"success":"error",{action:this.action,text:this.selectedText,trigger:this.trigger,clearSelection:this.clearSelection.bind(this)})}},{key:"clearSelection",value:function e(){this.target&&this.target.blur(),window.getSelection().removeAllRanges()}},{key:"destroy",value:function e(){this.removeFake()}},{key:"action",set:function e(){var t=arguments.length>0&&void 0!==arguments[0]?arguments[0]:"copy";if(this._action=t,"copy"!==this._action&&"cut"!==this._action)throw new Error('Invalid "action" value, use either "copy" or "cut"')},get:function e(){return this._action}},{key:"target",set:function e(t){if(void 0!==t){if(!t||"object"!==("undefined"==typeof t?"undefined":r(t))||1!==t.nodeType)throw new Error('Invalid "target" value, use a valid Element');if("copy"===this.action&&t.hasAttribute("disabled"))throw new Error('Invalid "target" attribute. Please use "readonly" instead of "disabled" attribute');if("cut"===this.action&&(t.hasAttribute("readonly")||t.hasAttribute("disabled")))throw new Error('Invalid "target" attribute. You can\'t cut text from elements with "readonly" or "disabled" attributes');this._target=t}},get:function e(){return this._target}}]),e}();e.exports=c})},{select:5}],8:[function(t,n,i){!function(o,r){if("function"==typeof e&&e.amd)e(["module","./clipboard-action","tiny-emitter","good-listener"],r);else if("undefined"!=typeof i)r(n,t("./clipboard-action"),t("tiny-emitter"),t("good-listener"));else{var a={exports:{}};r(a,o.clipboardAction,o.tinyEmitter,o.goodListener),o.clipboard=a.exports}}(this,function(e,t,n,i){"use strict";function o(e){return e&&e.__esModule?e:{default:e}}function r(e,t){if(!(e instanceof t))throw new TypeError("Cannot call a class as a function")}function a(e,t){if(!e)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!t||"object"!=typeof t&&"function"!=typeof t?e:t}function c(e,t){if("function"!=typeof t&&null!==t)throw new TypeError("Super expression must either be null or a function, not "+typeof t);e.prototype=Object.create(t&&t.prototype,{constructor:{value:e,enumerable:!1,writable:!0,configurable:!0}}),t&&(Object.setPrototypeOf?Object.setPrototypeOf(e,t):e.__proto__=t)}function l(e,t){var n="data-clipboard-"+e;if(t.hasAttribute(n))return t.getAttribute(n)}var s=o(t),u=o(n),f=o(i),d=function(){function e(e,t){for(var n=0;n<t.length;n++){var i=t[n];i.enumerable=i.enumerable||!1,i.configurable=!0,"value"in i&&(i.writable=!0),Object.defineProperty(e,i.key,i)}}return function(t,n,i){return n&&e(t.prototype,n),i&&e(t,i),t}}(),h=function(e){function t(e,n){r(this,t);var i=a(this,(t.__proto__||Object.getPrototypeOf(t)).call(this));return i.resolveOptions(n),i.listenClick(e),i}return c(t,e),d(t,[{key:"resolveOptions",value:function e(){var t=arguments.length>0&&void 0!==arguments[0]?arguments[0]:{};this.action="function"==typeof t.action?t.action:this.defaultAction,this.target="function"==typeof t.target?t.target:this.defaultTarget,this.text="function"==typeof t.text?t.text:this.defaultText}},{key:"listenClick",value:function e(t){var n=this;this.listener=(0,f.default)(t,"click",function(e){return n.onClick(e)})}},{key:"onClick",value:function e(t){var n=t.delegateTarget||t.currentTarget;this.clipboardAction&&(this.clipboardAction=null),this.clipboardAction=new s.default({action:this.action(n),target:this.target(n),text:this.text(n),trigger:n,emitter:this})}},{key:"defaultAction",value:function e(t){return l("action",t)}},{key:"defaultTarget",value:function e(t){var n=l("target",t);if(n)return document.querySelector(n)}},{key:"defaultText",value:function e(t){return l("text",t)}},{key:"destroy",value:function e(){this.listener.destroy(),this.clipboardAction&&(this.clipboardAction.destroy(),this.clipboardAction=null)}}]),t}(u.default);e.exports=h})},{"./clipboard-action":7,"good-listener":4,"tiny-emitter":6}]},{},[8])(8)});
 
 /***/ }),
-/* 4 */
+/* 11 */
+/***/ (function(module, exports, __webpack_require__) {
+
+var $ = __webpack_require__(1);
+
+var themes = [
+  'atelier-cave-dark',
+  'atelier-cave-light',
+  'atelier-dune-dark',
+  'atelier-dune-light',
+  'atelier-estuary-dark',
+  'atelier-estuary-light',
+  'atelier-forest-dark',
+  'atelier-forest-light',
+  'atelier-heath-dark',
+  'atelier-heath-light',
+  'atelier-lakeside-dark',
+  'atelier-lakeside-light',
+  'atelier-plateau-dark',
+  'atelier-plateau-light',
+  'atelier-savanna-dark',
+  'atelier-savanna-light',
+  'atelier-seaside-dark',
+  'atelier-seaside-light',
+  'atelier-sulphurpool-dark',
+  'atelier-sulphurpool-light',
+  'github-light',
+  'github-v2',
+  'github',
+  'hemisu-dark',
+  'hemisu-light',
+  'tomorrow-night-blue',
+  'tomorrow-night-bright',
+  'tomorrow-night-eighties',
+  'tomorrow-night',
+  'tomorrow',
+  'tranquil-heart',
+  'vibrant-ink'
+];
+var currentTheme = 'atelier-forest-light';
+
+let CodeTheme = function () {
+  this.init();
+};
+
+CodeTheme.prototype.init = function() {
+  this.bindEvt();
+};
+
+CodeTheme.prototype.bindEvt = function() {
+  var $options = $.map(themes, function(item) {
+    var selected = currentTheme === item ? ' selected' : '';
+    return '<option value="' + item + '"' + selected + '>' + item +'</option>';
+  });
+  $('.code-theme').html($options);
+  $('.code-theme').on('change', function() {
+    var val = $(this).val();
+    $("#codeThemeId").attr('href', './themes/' + val + '.css');
+  }).trigger('change');
+};
+
+
+module.exports = CodeTheme;
+
+
+/***/ }),
+/* 12 */
+/***/ (function(module, exports, __webpack_require__) {
+
+var $ = __webpack_require__(1);
+
+var themes = [
+  '默认样式-适合代码',
+  '字号偏大-间距偏大-窄屏模式',
+  '字号偏大-间距偏大-宽屏模式'
+];
+var currentTheme = '字号偏大-间距偏大-宽屏模式';
+
+let PageTheme = function () {
+  this.init();
+};
+
+PageTheme.prototype.init = function() {
+  this.bindEvt();
+};
+
+PageTheme.prototype.bindEvt = function() {
+  var $options = $.map(themes, function(item) {
+    var selected = currentTheme === item ? ' selected' : '';
+    return '<option value="' + item + '"' + selected + '>' + item +'</option>';
+  });
+  $('.page-theme').html($options);
+  $('.page-theme').on('change', function() {
+    var val = $(this).val();
+    $("#pageThemeId").attr('href', './pageThemes/' + val + '.css');
+  }).trigger('change');
+};
+
+
+module.exports = PageTheme;
+
+
+/***/ }),
+/* 13 */
+/***/ (function(module, exports, __webpack_require__) {
+
+var showdown = __webpack_require__(0);
+
+showdown.extension('prettify', function () {
+  return [{
+    type:   'output',
+    filter: function (source) {
+      return source.replace(/(<pre[^>]*>)?[\n\s]?<code([^>]*)>/gi, function (match, pre, codeClass) {
+        if (pre) {
+          return '<pre class="prettyprint linenums" style="font-size: 10px;line-height: 12px"><code' + codeClass + ' style="font-size: 10px;line-height: 12px">';
+        } else {
+          return ' <code class="prettyprint code-in-text"  style="font-size: 16px;line-height: 18px">';
+        }
+      });
+    }
+  }];
+});
+
+
+/***/ }),
+/* 14 */
+/***/ (function(module, exports, __webpack_require__) {
+
+var showdown = __webpack_require__(0);
+
+showdown.extension('tasklist', function () {
+  return [{
+    type:   'output',
+    filter: function (source) {
+      source = source.replace(/<li>\[ \] (.*)<\/li>/gi, function (match, pre) {
+        if(pre){
+          return '<p class="task-list-list uncheck" style="list-style-type: none;"><i class="icon_uncheck"></i><span>' + pre + '</span></p>'  ;
+        }
+      });
+
+      source = source.replace(/<li>\[x] (.*)<\/li>/gi, function (match, pre) {
+        if(pre){
+          return '<p class="task-list-list checked" style="list-style-type: none;"><i class="icon_check"></i>' + pre + '</p>'  ;
+        }
+      });
+
+      return source;
+    }
+  }];
+});
+
+
+/***/ }),
+/* 15 */
+/***/ (function(module, exports, __webpack_require__) {
+
+var showdown = __webpack_require__(0);
+
+var converter = new showdown.Converter();
+
+showdown.extension('footnote', function () {
+  return [{
+    type: 'lang',
+    filter: function filter(text) {
+      return text.replace(/^\[\^([\d\w]+)\]:\s*((\n+(\s{2,4}|\t).+)+)$/mg, function (str, name, rawContent, _, padding) {
+        var content = converter.makeHtml(rawContent.replace(new RegExp('^' + padding, 'gm'), ''));
+        return '<div class="footnote" id="footnote-' + name + '"><a href="#footnote-' + name + '"><sup>[' + name + ']</sup></a>:' + content + '</div>';
+      });
+    }
+  }, {
+    type: 'lang',
+    filter: function filter(text) {
+      return text.replace(/^\[\^([\d\w]+)\]:( |\n)((.+\n)*.+)$/mg, function (str, name, _, content) {
+        return '<small class="footnote" id="footnote-' + name + '"><a href="#footnote-' + name + '"><sup>[' + name + ']</sup></a>: ' + content + '</small>';
+      });
+    }
+  }, {
+    type: 'lang',
+    filter: function filter(text) {
+      return text.replace(/\[\^([\d\w]+)\]/m, function (str, name) {
+        return '<a href="#footnote-' + name + '"><sup>[' + name + ']</sup></a>';
+      });
+    }
+  }];
+});
+
+
+/***/ }),
+/* 16 */
 /***/ (function(module, exports) {
 
 /**
@@ -13105,8 +13719,8 @@ var IN_GLOBAL_SCOPE = false;
     skinUrls.push(LOADER_BASE_URL
       + '/skins/' + encodeURIComponent(skins[i]) + '.css');
   }
-  // skinUrls.push(LOADER_BASE_URL + '/prettify.css');
-  // loadStylesheetsFallingBack(skinUrls);
+  skinUrls.push(LOADER_BASE_URL + '/prettify.css');
+  loadStylesheetsFallingBack(skinUrls);
 
   var prettyPrint = (function () {
     /**
@@ -14824,624 +15438,6 @@ var IN_GLOBAL_SCOPE = false;
   }
   checkPendingLanguages();
 }());
-
-
-/***/ }),
-/* 5 */
-/***/ (function(module, exports, __webpack_require__) {
-
-var showdown = __webpack_require__(0);
-
-var converter = new showdown.Converter();
-
-showdown.extension('footnote', function () {
-  return [{
-    type: 'lang',
-    filter: function filter(text) {
-      return text.replace(/^\[\^([\d\w]+)\]:\s*((\n+(\s{2,4}|\t).+)+)$/mg, function (str, name, rawContent, _, padding) {
-        var content = converter.makeHtml(rawContent.replace(new RegExp('^' + padding, 'gm'), ''));
-        return '<div class="footnote" id="footnote-' + name + '"><a href="#footnote-' + name + '"><sup>[' + name + ']</sup></a>:' + content + '</div>';
-      });
-    }
-  }, {
-    type: 'lang',
-    filter: function filter(text) {
-      return text.replace(/^\[\^([\d\w]+)\]:( |\n)((.+\n)*.+)$/mg, function (str, name, _, content) {
-        return '<small class="footnote" id="footnote-' + name + '"><a href="#footnote-' + name + '"><sup>[' + name + ']</sup></a>: ' + content + '</small>';
-      });
-    }
-  }, {
-    type: 'lang',
-    filter: function filter(text) {
-      return text.replace(/\[\^([\d\w]+)\]/m, function (str, name) {
-        return '<a href="#footnote-' + name + '"><sup>[' + name + ']</sup></a>';
-      });
-    }
-  }];
-});
-
-
-/***/ }),
-/* 6 */
-/***/ (function(module, exports, __webpack_require__) {
-
-var showdown = __webpack_require__(0);
-
-showdown.extension('tasklist', function () {
-  return [{
-    type:   'output',
-    filter: function (source) {
-      source = source.replace(/<li>\[ \] (.*)<\/li>/gi, function (match, pre) {
-        if(pre){
-          return '<p class="task-list-list uncheck" style="list-style-type: none;"><i class="icon_uncheck"></i><span>' + pre + '</span></p>'  ;
-        }
-      });
-
-      source = source.replace(/<li>\[x] (.*)<\/li>/gi, function (match, pre) {
-        if(pre){
-          return '<p class="task-list-list checked" style="list-style-type: none;"><i class="icon_check"></i>' + pre + '</p>'  ;
-        }
-      });
-
-      return source;
-    }
-  }];
-});
-
-
-/***/ }),
-/* 7 */
-/***/ (function(module, exports, __webpack_require__) {
-
-var showdown = __webpack_require__(0);
-
-showdown.extension('prettify', function () {
-  return [{
-    type:   'output',
-    filter: function (source) {
-      return source.replace(/(<pre[^>]*>)?[\n\s]?<code([^>]*)>/gi, function (match, pre, codeClass) {
-        if (pre) {
-          return '<pre class="prettyprint linenums" style="font-size: 10px;line-height: 12px"><code' + codeClass + ' style="font-size: 10px;line-height: 12px">';
-        } else {
-          return ' <code class="prettyprint code-in-text"  style="font-size: 16px;line-height: 18px">';
-        }
-      });
-    }
-  }];
-});
-
-
-/***/ }),
-/* 8 */
-/***/ (function(module, exports, __webpack_require__) {
-
-var $ = __webpack_require__(1);
-
-var themes = [
-  'atelier-cave-dark',
-  'atelier-cave-light',
-  'atelier-dune-dark',
-  'atelier-dune-light',
-  'atelier-estuary-dark',
-  'atelier-estuary-light',
-  'atelier-forest-dark',
-  'atelier-forest-light',
-  'atelier-heath-dark',
-  'atelier-heath-light',
-  'atelier-lakeside-dark',
-  'atelier-lakeside-light',
-  'atelier-plateau-dark',
-  'atelier-plateau-light',
-  'atelier-savanna-dark',
-  'atelier-savanna-light',
-  'atelier-seaside-dark',
-  'atelier-seaside-light',
-  'atelier-sulphurpool-dark',
-  'atelier-sulphurpool-light',
-  'github-light',
-  'github-v2',
-  'github',
-  'hemisu-dark',
-  'hemisu-light',
-  'tomorrow-night-blue',
-  'tomorrow-night-bright',
-  'tomorrow-night-eighties',
-  'tomorrow-night',
-  'tomorrow',
-  'tranquil-heart',
-  'vibrant-ink'
-];
-var currentTheme = 'atelier-forest-light';
-
-let CodeTheme = function () {
-  this.init();
-};
-
-CodeTheme.prototype.init = function() {
-  this.bindEvt();
-};
-
-CodeTheme.prototype.bindEvt = function() {
-  var $options = $.map(themes, function(item) {
-    var selected = currentTheme === item ? ' selected' : '';
-    return '<option value="' + item + '"' + selected + '>' + item +'</option>';
-  });
-  $('.code-theme').html($options);
-  $('.code-theme').on('change', function() {
-    var val = $(this).val();
-    $("#codeThemeId").attr('href', './themes/' + val + '.css');
-  }).trigger('change');
-};
-
-
-module.exports = CodeTheme;
-
-
-/***/ }),
-/* 9 */
-/***/ (function(module, exports, __webpack_require__) {
-
-var $ = __webpack_require__(1);
-
-var themes = [
-  '默认样式-适合代码',
-  '字号偏大-间距偏大-窄屏模式',
-  '字号偏大-间距偏大-宽屏模式'
-];
-var currentTheme = '字号偏大-间距偏大-宽屏模式';
-
-let PageTheme = function () {
-  this.init();
-};
-
-PageTheme.prototype.init = function() {
-  this.bindEvt();
-};
-
-PageTheme.prototype.bindEvt = function() {
-  var $options = $.map(themes, function(item) {
-    var selected = currentTheme === item ? ' selected' : '';
-    return '<option value="' + item + '"' + selected + '>' + item +'</option>';
-  });
-  $('.page-theme').html($options);
-  $('.page-theme').on('change', function() {
-    var val = $(this).val();
-    $("#pageThemeId").attr('href', './pageThemes/' + val + '.css');
-  }).trigger('change');
-};
-
-
-module.exports = PageTheme;
-
-
-/***/ }),
-/* 10 */
-/***/ (function(module, exports, __webpack_require__) {
-
-// style-loader: Adds some css to the DOM by adding a <style> tag
-
-// load the styles
-var content = __webpack_require__(11);
-if(typeof content === 'string') content = [[module.i, content, '']];
-// add the styles to the DOM
-var update = __webpack_require__(13)(content, {});
-if(content.locals) module.exports = content.locals;
-// Hot Module Replacement
-if(false) {
-	// When the styles change, update the <style> tags
-	if(!content.locals) {
-		module.hot.accept("!!./../../node_modules/css-loader/index.js!./../../node_modules/less-loader/index.js?sourceMap!./index.less", function() {
-			var newContent = require("!!./../../node_modules/css-loader/index.js!./../../node_modules/less-loader/index.js?sourceMap!./index.less");
-			if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];
-			update(newContent);
-		});
-	}
-	// When the module is disposed, remove the <style> tags
-	module.hot.dispose(function() { update(); });
-}
-
-/***/ }),
-/* 11 */
-/***/ (function(module, exports, __webpack_require__) {
-
-exports = module.exports = __webpack_require__(2)();
-// imports
-exports.i(__webpack_require__(12), "");
-
-// module
-exports.push([module.i, "@charset \"utf-8\";\nh3#headline {\n  color: #444;\n  margin: 0;\n  padding: 11px 0px 5px 0px;\n  font-size: 11px;\n  line-height: 14px;\n  text-transform: uppercase;\n  letter-spacing: 2px;\n  font-weight: bold;\n}\nh2#headline {\n  color: #444;\n  margin: 0;\n  padding: 0px 0px 6px 0px;\n  font-size: 51px;\n  line-height: 44px;\n  letter-spacing: -2px;\n  font-weight: bold;\n  text-transform: none;\n}\n/* 防止用户自定义背景颜色对网页的影响，添加让用户可以自定义字体 */\nhtml {\n  color: #333;\n  background: #fff;\n  -webkit-text-size-adjust: 100%;\n  -ms-text-size-adjust: 100%;\n  text-rendering: optimizelegibility;\n}\n/* 如果你的项目仅支持 IE9+ | Chrome | Firefox 等，推荐在 <html> 中添加 .borderbox 这个 class */\nhtml.borderbox *,\nhtml.borderbox *:before,\nhtml.borderbox *:after {\n  -moz-box-sizing: border-box;\n  -webkit-box-sizing: border-box;\n  box-sizing: border-box;\n}\n/* 内外边距通常让各个浏览器样式的表现位置不同 */\nbody,\ndl,\ndt,\ndd,\nul,\nol,\nli,\nh1,\nh2,\nh3,\nh4,\nh5,\nh6,\npre,\ncode,\nform,\nfieldset,\nlegend,\ninput,\ntextarea,\np,\nblockquote,\nth,\ntd,\nhr,\nbutton,\narticle,\naside,\ndetails,\nfigcaption,\nfigure,\nfooter,\nheader,\nmenu,\nnav,\nsection {\n  margin: 0;\n  padding: 0;\n}\n/* 重设 HTML5 标签, IE 需要在 js 中 createElement(TAG) */\narticle,\naside,\ndetails,\nfigcaption,\nfigure,\nfooter,\nheader,\nmenu,\nnav,\nsection {\n  display: block;\n}\n/* HTML5 媒体文件跟 img 保持一致 */\naudio,\ncanvas,\nvideo {\n  display: inline-block;\n}\n/* 要注意表单元素并不继承父级 font 的问题 */\nbody,\nbutton,\ninput,\nselect,\ntextarea {\n  font: 300 1em/1.8 'PingFang SC', 'Lantinghei SC', 'Microsoft Yahei', 'Hiragino Sans GB', 'Microsoft Sans Serif', 'WenQuanYi Micro Hei', 'sans';\n}\nbutton::-moz-focus-inner,\ninput::-moz-focus-inner {\n  padding: 0;\n  border: 0;\n}\n/* 去掉各Table cell 的边距并让其边重合 */\ntable {\n  border-collapse: collapse;\n  border-spacing: 0;\n}\n/* 去除默认边框 */\nfieldset,\nimg {\n  border: 0;\n}\n/* 块/段落引用 */\nblockquote {\n  position: relative;\n  color: #999;\n  font-weight: 400;\n  border-left: 1px solid #1abc9c;\n  padding-left: 1em;\n  margin: 1em 0 1em 2em;\n}\n@media only screen and (max-width: 640px) {\n  blockquote {\n    margin: 1em 0;\n  }\n}\n/* Firefox 以外，元素没有下划线，需添加 */\nacronym,\nabbr {\n  border-bottom: 1px dotted;\n  font-variant: normal;\n}\n/* 添加鼠标问号，进一步确保应用的语义是正确的（要知道，交互他们也有洁癖，如果你不去掉，那得多花点口舌） */\nabbr {\n  cursor: help;\n}\n/* 一致的 del 样式 */\ndel {\n  text-decoration: line-through;\n}\naddress,\ncaption,\ncite,\ncode,\ndfn,\nem,\nth,\nvar {\n  font-style: normal;\n  font-weight: 400;\n}\n/* 去掉列表前的标识, li 会继承，大部分网站通常用列表来很多内容，所以应该当去 */\nul,\nol {\n  list-style: none;\n}\n/* 对齐是排版最重要的因素, 别让什么都居中 */\ncaption,\nth {\n  text-align: left;\n}\nq:before,\nq:after {\n  content: '';\n}\n/* 统一上标和下标 */\nsub,\nsup {\n  font-size: 75%;\n  line-height: 0;\n  position: relative;\n}\n:root sub,\n:root sup {\n  vertical-align: baseline;\n  /* for ie9 and other modern browsers */\n}\nsup {\n  top: -0.5em;\n}\nsub {\n  bottom: -0.25em;\n}\n/* 让链接在 hover 状态下显示下划线 */\na {\n  color: #1abc9c;\n}\na:hover {\n  text-decoration: underline;\n}\n.typo a {\n  border-bottom: 1px solid #1abc9c;\n}\n.typo a:hover {\n  border-bottom-color: #555;\n  color: #555;\n  text-decoration: none;\n}\n/* 默认不显示下划线，保持页面简洁 */\nins,\na {\n  text-decoration: none;\n}\n/* 专名号：虽然 u 已经重回 html5 Draft，但在所有浏览器中都是可以使用的，\n * 要做到更好，向后兼容的话，添加 class=\"typo-u\" 来显示专名号\n * 关于 <u> 标签：http://www.whatwg.org/specs/web-apps/current-work/multipage/text-level-semantics.html#the-u-element\n * 被放弃的是 4，之前一直搞错 http://www.w3.org/TR/html401/appendix/changes.html#idx-deprecated\n * 一篇关于 <u> 标签的很好文章：http://html5doctor.com/u-element/\n */\nu,\n.typo-u {\n  text-decoration: underline;\n}\n/* 标记，类似于手写的荧光笔的作用 */\nmark {\n  background: #fffdd1;\n  border-bottom: 1px solid #ffedce;\n  padding: 2px;\n  margin: 0 5px;\n}\n/* 代码片断 */\npre,\ncode,\npre tt {\n  font-family: Courier, 'Courier New', monospace;\n}\npre {\n  background: #f8f8f8;\n  border: 1px solid #ddd;\n  padding: 1em 1.5em;\n  display: block;\n  -webkit-overflow-scrolling: touch;\n}\n/* 一致化 horizontal rule */\nhr {\n  border: none;\n  border-bottom: 1px solid #cfcfcf;\n  margin-bottom: 0.8em;\n  height: 10px;\n}\n/* 底部印刷体、版本等标记 */\nsmall,\n.typo-small,\nfigcaption {\n  font-size: 0.9em;\n  color: #888;\n}\nstrong,\nb {\n  font-weight: bold;\n  color: #000;\n}\n/* 可拖动文件添加拖动手势 */\n[draggable] {\n  cursor: move;\n}\n.clearfix:before,\n.clearfix:after {\n  content: \"\";\n  display: table;\n}\n.clearfix:after {\n  clear: both;\n}\n.clearfix {\n  zoom: 1;\n}\n/* 强制文本换行 */\n.textwrap,\n.textwrap td,\n.textwrap th {\n  word-wrap: break-word;\n  word-break: break-all;\n}\n.textwrap-table {\n  table-layout: fixed;\n}\n/* 提供 serif 版本的字体设置: iOS 下中文自动 fallback 到 sans-serif */\n.serif {\n  font-family: Palatino, Optima, Georgia, serif;\n}\n/* 保证块/段落之间的空白隔行 */\n.typo p,\n.typo pre,\n.typo ul,\n.typo ol,\n.typo dl,\n.typo form,\n.typo hr,\n.typo table,\n.typo-p,\n.typo-pre,\n.typo-ul,\n.typo-ol,\n.typo-dl,\n.typo-form,\n.typo-hr,\n.typo-table,\nblockquote {\n  margin-bottom: 1.2em;\n}\nh1,\nh2,\nh3,\nh4,\nh5,\nh6 {\n  font-family: PingFang SC, Verdana, Helvetica Neue, Microsoft Yahei, Hiragino Sans GB, Microsoft Sans Serif, WenQuanYi Micro Hei, sans-serif;\n  font-weight: 100;\n  color: #000;\n  line-height: 1.35;\n}\n/* 标题应该更贴紧内容，并与其他块区分，margin 值要相应做优化 */\n.typo h1,\n.typo h2,\n.typo h3,\n.typo h4,\n.typo h5,\n.typo h6,\n.typo-h1,\n.typo-h2,\n.typo-h3,\n.typo-h4,\n.typo-h5,\n.typo-h6 {\n  margin-top: 1.2em;\n  margin-bottom: 0.6em;\n  line-height: 1.35;\n}\n.typo h1,\n.typo-h1 {\n  font-size: 2em;\n}\n.typo h2,\n.typo-h2 {\n  font-size: 1.8em;\n}\n.typo h3,\n.typo-h3 {\n  font-size: 1.6em;\n}\n.typo h4,\n.typo-h4 {\n  font-size: 1.4em;\n}\n.typo h5,\n.typo h6,\n.typo-h5,\n.typo-h6 {\n  font-size: 1.2em;\n}\n/* 在文章中，应该还原 ul 和 ol 的样式 */\n.typo ul,\n.typo-ul {\n  margin-left: 1.3em;\n  list-style: disc;\n}\n.typo ol,\n.typo-ol {\n  list-style: decimal;\n  margin-left: 1.9em;\n}\n.typo li ul,\n.typo li ol,\n.typo-ul ul,\n.typo-ul ol,\n.typo-ol ul,\n.typo-ol ol {\n  margin-bottom: 0.8em;\n  margin-left: 2em;\n}\n.typo li ul,\n.typo-ul ul,\n.typo-ol ul {\n  list-style: circle;\n}\n/* 同 ul/ol，在文章中应用 table 基本格式 */\n.typo table th,\n.typo table td,\n.typo-table th,\n.typo-table td,\n.typo table caption {\n  border: 1px solid #ddd;\n  padding: 0.5em 1em;\n  color: #666;\n}\n.typo table th,\n.typo-table th {\n  background: #fbfbfb;\n}\n.typo table thead th,\n.typo-table thead th {\n  background: #f1f1f1;\n}\n.typo table caption {\n  border-bottom: none;\n}\n/* 去除 webkit 中 input 和 textarea 的默认样式  */\n.typo-input,\n.typo-textarea {\n  -webkit-appearance: none;\n  border-radius: 0;\n}\n.typo-em,\n.typo em,\nlegend,\ncaption {\n  color: #000;\n  font-weight: inherit;\n}\n/* 着重号，只能在少量（少于100个字符）且全是全角字符的情况下使用 */\n.typo-em {\n  position: relative;\n}\n.typo-em:after {\n  position: absolute;\n  top: 0.65em;\n  left: 0;\n  width: 100%;\n  overflow: hidden;\n  white-space: nowrap;\n  content: \"\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\\30FB\";\n}\n/* Responsive images */\n.typo img {\n  max-width: 100%;\n}\n::selection {\n  background: #fde6ba;\n  color: #000;\n}\nbutton,\ntextarea,\nselect {\n  outline: none;\n}\nbody,\nhtml {\n  overflow: hidden;\n}\nbody {\n  font-size: 15px !important;\n}\nh1,\nh2,\nh3,\nh4,\nh5,\nh6 {\n  font-family: 'Menlo', 'Monaco', 'Source Code Pro', 'Consolas', 'Inconsolata', 'Ubuntu Mono', 'DejaVu Sans Mono', 'Courier New', 'Droid Sans Mono', 'Hiragino Sans GB', '\\5FAE\\8F6F\\96C5\\9ED1', monospace !important;\n}\nh1 {\n  font-size: 26px;\n}\nh2 {\n  font-size: 22px;\n}\nh3 {\n  font-size: 18px;\n}\nh4 {\n  font-size: 14px;\n}\na {\n  font-size: 15px !important;\n  word-break: break-all !important;\n}\nul,\nol {\n  padding-left: 32px !important;\n  list-style-type: square !important;\n}\nul li span,\nol li span {\n  font-size: 14px !important;\n  color: #4a4a4a;\n}\nol {\n  list-style-type: decimal !important;\n}\n.topheader {\n  overflow: hidden;\n  -webkit-user-select: none;\n  height: 68px;\n  padding: 0 20px;\n  position: relative;\n  background: #499bea;\n  background: -moz-linear-gradient(left, #e5e5be 0, #003973 100%);\n  background: -webkit-gradient(linear, left, right, color-sleft(0%, #e5e5be), color-sleft(100%, #003973));\n  background: -webkit-linear-gradient(left, #e5e5be 0, #003973 100%);\n  background: -o-linear-gradient(left, #e5e5be 0, #003973 100%);\n  background: -ms-linear-gradient(left, #e5e5be 0, #003973 100%);\n  background: linear-gradient(to left, #e5e5be 0, #003973 100%);\n  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#e5e5be', endColorstr='#003973', GradientType=1);\n}\n.topheader h1 {\n  font-size: 30px;\n  line-height: 64px;\n  color: #FFF;\n  font-family: fantasy,cursive,consolas;\n  text-shadow: 1px 1px 1px #000, 1px 1px 3px #CCC;\n  display: inline-block;\n}\n.topheader span {\n  font-size: 13px;\n  display: inline-block;\n  margin-left: 0;\n  color: #E4E4E4;\n  position: relative;\n  top: 10px;\n}\n.topheader span a {\n  color: #E4E4E4;\n}\n.topheader a:hover {\n  color: #e58c7c;\n}\n.topheader ul {\n  position: absolute;\n  right: 20px;\n  top: 0;\n  list-style-type: none !important;\n  height: 64px;\n  line-height: 64px;\n}\n.topheader ul li {\n  float: left;\n  margin-left: 20px;\n  font-family: consolas;\n}\n.topheader ul li a {\n  color: #555;\n  display: inline-block;\n  height: 100%;\n  line-height: 64px;\n}\n.topheader ul li a {\n  color: #555;\n}\n.topheader ul li a:hover {\n  color: #000;\n  text-decoration: underline;\n}\n.topheader ul li .icon {\n  margin-right: 4px;\n  vertical-align: middle;\n  transition: none;\n}\ntextarea {\n  width: 100%;\n  margin: 0;\n  padding: 1em;\n  overflow: auto;\n  border: none;\n  background-color: #fff;\n  font-family: courier, monospace;\n  font-size: inherit;\n  color: inherit;\n  outline: none;\n  background: #333;\n  color: #fff;\n  position: absolute;\n  top: 64px;\n  left: 0;\n  right: 0;\n  bottom: 0;\n  resize: none;\n  z-index: 2;\n  font-size: 15px;\n}\n#output {\n  position: absolute;\n  top: 64px;\n  left: 0;\n  right: 0;\n  bottom: 0;\n  resize: none;\n  z-index: 1;\n  background: #EEE;\n  overflow: hidden;\n}\n#output .wrapper {\n  overflow-y: auto;\n  height: 100%;\n  margin: 20px auto;\n  background: #FFF;\n  padding: 1rem;\n  width: 800px;\n  padding-bottom: 100px;\n  max-width: 100%;\n  -webkit-overflow-scrolling: touch;\n}\n.github-star {\n  position: relative;\n  top: 5px;\n}\n.btn {\n  border: none;\n  color: white;\n  padding: 5px 25px;\n  text-align: center;\n  text-decoration: none;\n  display: inline-block;\n  font-size: 16px;\n  box-shadow: 1px 1px 3px #666;\n}\n.convert-button,\n.copy-button {\n  position: absolute;\n  right: 110px;\n  z-index: 3;\n  top: 80px;\n  border-radius: 3px;\n  background-color: #3a6586;\n}\n.convert-button {\n  right: 15px;\n  background-color: #e3e4bd;\n  color: #555;\n}\n.themes-config {\n  margin: 0 auto;\n  width: 800px;\n  max-width: 100%;\n  padding-top: 20px;\n  padding-left: 8px;\n}\n.themes-config .theme-wrapper {\n  margin-top: 8px;\n  display: inline-block;\n  margin-right: 20px;\n}\n.themes-config .theme-wrapper select {\n  background: #FFF;\n}\n@media screen and (max-width: 641px) {\n  .topheader ul {\n    display: none;\n  }\n  .btn {\n    padding: 2px 15px;\n    font-size: 14px;\n  }\n  .copy-button {\n    right: 80px;\n  }\n}\n* {\n  box-sizing: border-box;\n}\nbody {\n  padding: 0;\n  margin: 0;\n  font-family: Helvetica, Arial, sans-serif;\n  font-size: 16px;\n  line-height: 1.5;\n  color: #50616D;\n}\na {\n  color: #1e6bb8;\n  text-decoration: none;\n}\na:hover {\n  text-decoration: underline;\n}\n:first-child {\n  margin-top: 0;\n}\nimg {\n  border-radius: 6px;\n  border: 2px solid #EEE;\n  max-width: 100%;\n}\nh1,\nh2,\nh3,\nh4,\nh5,\nh6 {\n  margin-top: 1.5rem;\n  margin-bottom: 1rem;\n  font-weight: normal;\n  color: #159957;\n}\np {\n  margin-bottom: 15px;\n  margin-top: 15px;\n}\npre p {\n  margin: 0;\n}\npre ul,\npre ol {\n  margin: 0;\n  padding-top: 12px;\n  padding-bottom: 12px;\n}\npre code,\npre tt {\n  display: inline;\n  padding: 0;\n  margin: 0;\n  overflow: initial;\n  line-height: inherit;\n  word-wrap: normal;\n  border: 0;\n}\npre code:before,\npre code:after,\npre tt:before,\npre tt:after {\n  content: normal;\n}\nul,\nol {\n  margin-top: 0;\n}\nblockquote {\n  padding: 15px 1rem;\n  font-size: 14px;\n  line-height: 18px;\n  padding-right: 15px;\n  margin-left: 0;\n  color: #819198;\n  border-left: 6px solid #dce6f0;\n  background: #f2f7fb;\n}\nblockquote > :first-child {\n  margin-top: 0;\n}\nblockquote > :last-child {\n  margin-bottom: 0;\n}\ntable {\n  display: block;\n  width: 100%;\n  overflow: auto;\n  word-break: normal;\n  word-break: keep-all;\n}\ntable th {\n  font-weight: bold;\n}\ntable th,\ntable td {\n  padding: 0.5rem 1rem;\n  border: 1px solid #e9ebec;\n}\ndl {\n  padding: 0;\n}\ndl dt {\n  padding: 0;\n  margin-top: 1rem;\n  font-size: 1rem;\n  font-weight: bold;\n}\ndl dd {\n  padding: 0;\n  margin-bottom: 1rem;\n}\nhr {\n  height: 1px;\n  margin: 1.5rem 0;\n  border: none;\n  border-top: 1px dashed #A5A5A5;\n}\n.hljs {\n  display: block;\n  overflow-x: auto;\n  padding: 0.5em;\n  background: #F0F0F0;\n}\n.hljs,\n.hljs-subst {\n  color: #444;\n}\n.hljs-comment {\n  color: #888888;\n}\n.hljs-attribute,\n.hljs-doctag,\n.hljs-keyword,\n.hljs-meta-keyword,\n.hljs-name,\n.hljs-selector-tag {\n  font-weight: bold;\n}\n.hljs-deletion,\n.hljs-number,\n.hljs-quote,\n.hljs-selector-class,\n.hljs-selector-id,\n.hljs-string,\n.hljs-template-tag,\n.hljs-type {\n  color: #880000;\n}\n.hljs-section,\n.hljs-title {\n  color: #880000;\n  font-weight: bold;\n}\n.hljs-link,\n.hljs-regexp,\n.hljs-selector-attr,\n.hljs-selector-pseudo,\n.hljs-symbol,\n.hljs-template-variable,\n.hljs-variable {\n  color: #BC6060;\n}\n.hljs-literal {\n  color: #78A960;\n}\n.hljs-addition,\n.hljs-built_in,\n.hljs-bullet,\n.hljs-code {\n  color: #397300;\n}\n.hljs-meta {\n  color: #1f7199;\n}\n.hljs-meta-string {\n  color: #4d99bf;\n}\n.hljs-emphasis {\n  font-style: italic;\n}\n.hljs-strong {\n  font-weight: bold;\n}\n.pln {\n  color: #000;\n}\n@media screen {\n  .str {\n    color: #080;\n  }\n  .kwd {\n    color: #008;\n  }\n  .com {\n    color: #800;\n  }\n  .typ {\n    color: #606;\n  }\n  .lit {\n    color: #066;\n  }\n  .pun,\n  .opn,\n  .clo {\n    color: #660;\n  }\n  .tag {\n    color: #008;\n  }\n  .atn {\n    color: #606;\n  }\n  .atv {\n    color: #080;\n  }\n  .dec,\n  .var {\n    color: #606;\n  }\n  .fun {\n    color: red;\n  }\n}\n@media print, projection {\n  .str {\n    color: #060;\n  }\n  .kwd {\n    color: #006;\n    font-weight: bold;\n  }\n  .com {\n    color: #600;\n    font-style: italic;\n  }\n  .typ {\n    color: #404;\n    font-weight: bold;\n  }\n  .lit {\n    color: #044;\n  }\n  .pun,\n  .opn,\n  .clo {\n    color: #440;\n  }\n  .tag {\n    color: #006;\n    font-weight: bold;\n  }\n  .atn {\n    color: #404;\n  }\n  .atv {\n    color: #060;\n  }\n}\n.pln {\n  color: #000;\n}\n@media screen {\n  .str {\n    color: #080;\n  }\n  .kwd {\n    color: #008;\n  }\n  .com {\n    color: #800;\n  }\n  .typ {\n    color: #606;\n  }\n  .lit {\n    color: #066;\n  }\n  .pun,\n  .opn,\n  .clo {\n    color: #660;\n  }\n  .tag {\n    color: #008;\n  }\n  .atn {\n    color: #606;\n  }\n  .atv {\n    color: #080;\n  }\n  .dec,\n  .var {\n    color: #606;\n  }\n  .fun {\n    color: red;\n  }\n}\n@media print, projection {\n  .str {\n    color: #060;\n  }\n  .kwd {\n    color: #006;\n    font-weight: bold;\n  }\n  .com {\n    color: #600;\n    font-style: italic;\n  }\n  .typ {\n    color: #404;\n    font-weight: bold;\n  }\n  .lit {\n    color: #044;\n  }\n  .pun,\n  .opn,\n  .clo {\n    color: #440;\n  }\n  .tag {\n    color: #006;\n    font-weight: bold;\n  }\n  .atn {\n    color: #404;\n  }\n  .atv {\n    color: #060;\n  }\n}\npre.prettyprint {\n  border-radius: 0;\n  font-family: 'consolas', 'menlo', 'courier', 'monospace', 'Microsoft Yahei' !important;\n  overflow-y: auto;\n}\npre.prettyprint {\n  border-radius: 0;\n  font-family: 'consolas', 'menlo', 'courier', 'monospace', 'Microsoft Yahei' !important;\n  overflow-y: auto;\n}\npre.prettyprint.linenums {\n  border: 1px solid #e2e2e2 !important;\n  padding: 8px 0 6px;\n}\nol.linenums {\n  margin-top: 0;\n  margin-bottom: 0;\n  overflow-y: auto;\n  -webkit-overflow-scrolling: touch;\n  list-style-type: none !important;\n}\nol.linenums li > span {\n  word-break: inherit !important;\n  white-space: nowrap !important;\n  display: block;\n}\nol.linenums li > span > span {\n  word-break: inherit !important;\n  white-space: nowrap !important;\n  display: block;\n}\nol.linenums li code {\n  line-height: 20px !important;\n  margin-left: -20px;\n  font-family: inherit !important;\n  white-space: pre !important;\n  display: flex;\n}\nol.linenums li code span {\n  white-space: inherit !important;\n  font-size: 13px !important;\n  line-height: 20px;\n  font-family: 'consolas', 'menlo', 'courier', 'monospace', 'Microsoft Yahei' !important;\n}\n.code-in-text {\n  color: #585858;\n  background: #f3f1f1;\n}\n.code-in-text span {\n  color: #585858;\n  background: #f3f1f1;\n  display: inline-block;\n  padding: 0 2px;\n  font-size: 14px;\n  font-family: 'consolas', 'menlo', 'courier', 'monospace', 'Microsoft Yahei' !important;\n}\n.prettyprint.code-in-text {\n  background: #f3f1f1;\n  font-family: 'consolas', 'menlo', 'courier', 'monospace', 'Microsoft Yahei' !important;\n}\nli.L0,\nli.L1,\nli.L2,\nli.L3,\nli.L4,\nli.L5,\nli.L6,\nli.L7,\nli.L8,\nli.L9 {\n  list-style-type: none !important;\n}\nli.L1,\nli.L3,\nli.L5,\nli.L7,\nli.L9 {\n  list-style-type: none !important;\n  background: transparent !important;\n}\n.prettyprint {\n  font-family: Consolas, Menlo, Courier, monospace;\n}\n.prettyprint pre p {\n  min-height: 10px;\n}\n#list1 ul {\n  padding-left: 10px;\n}\nul li.task-list-list {\n  list-style-type: none;\n  padding: 0 10px;\n}\nul,\nol {\n  margin: 0;\n  padding: 0;\n  padding-left: 40px;\n}\n.task-list-list {\n  margin: 0;\n  padding: 0;\n}\ntable {\n  display: table;\n  width: 100%;\n}\ntable tr:nth-child(2n) {\n  background-color: #f8f8f8;\n}\n.task-list-list.checked {\n  color: #159957;\n}\n.task-list-list.uncheck {\n  color: #bfc1bf;\n}\n.task-list-list img {\n  height: 20px;\n  width: 20px;\n  margin: 0 10px;\n  top: 4px;\n  position: relative;\n}\nh1.super {\n  white-space: normal;\n  border: none;\n  margin: 5px 0 0;\n  padding: 10px;\n  font-size: 24px;\n  line-height: 20px;\n  border-left-width: 6px;\n  border-left-style: solid;\n  border-radius: 3px;\n  color: #FFFBF0;\n  border-left-color: #30DFF3;\n  background-color: #4B5CC4;\n}\nh2.super {\n  white-space: normal;\n  border: none;\n  margin: 5px 0 0;\n  padding: 10px;\n  font-size: 20px;\n  line-height: 20px;\n  border-left-width: 12px;\n  border-left-style: solid;\n  border-radius: 3px;\n  color: #FFFBF0;\n  border-left-color: #30DFF3;\n  background-color: #4B5CC4;\n}\nh3.super {\n  white-space: normal;\n  border: none;\n  margin: 5px 0 0;\n  padding: 10px;\n  font-size: 18px;\n  line-height: 20px;\n  border-left-width: 18px;\n  border-left-style: solid;\n  border-radius: 3px;\n  color: #FFFBF0;\n  border-left-color: #30DFF3;\n  background-color: #4B5CC4;\n}\nh4.super {\n  white-space: normal;\n  border: none;\n  margin: 5px 0 0;\n  padding: 10px;\n  font-size: 16px;\n  line-height: 20px;\n  border-left-width: 24px;\n  border-left-style: solid;\n  border-radius: 3px;\n  color: #FFFBF0;\n  border-left-color: #30DFF3;\n  background-color: #4B5CC4;\n}\nruby {\n  background-color: rgba(67, 193, 105, 0.5);\n  margin: 4px;\n  padding-right: 2px;\n  padding-left: 2px;\n}\nruby rt {\n  font-style: italic;\n  background-color: rgba(67, 193, 105, 0.2);\n}\n.icon_uncheck,\n.icon_check {\n  display: inline-block;\n  vertical-align: middle;\n  width: 20px;\n  height: 20px;\n  background-repeat: no-repeat;\n  background-size: contain;\n  margin-right: 4px;\n}\n.icon_check {\n  background-image: url(" + __webpack_require__(14) + ");\n}\n.icon_uncheck {\n  background-image: url(" + __webpack_require__(15) + ");\n}\n", ""]);
-
-// exports
-
-
-/***/ }),
-/* 12 */
-/***/ (function(module, exports, __webpack_require__) {
-
-exports = module.exports = __webpack_require__(2)();
-// imports
-
-
-// module
-exports.push([module.i, "/*! Color themes for Google Code Prettify | MIT License | github.com/jmblog/color-themes-for-google-code-prettify */\n.prettyprint {\n  background: #1d1f21;\n  font-family: Menlo, \"Bitstream Vera Sans Mono\", \"DejaVu Sans Mono\", Monaco, Consolas, monospace;\n  border: 0 !important;\n}\n\n.pln {\n  color: #c5c8c6;\n}\n\n/* Specify class=linenums on a pre to get line numbering */\nol.linenums {\n  margin-top: 0;\n  margin-bottom: 0;\n  color: #969896;\n}\n\nli.L0,\nli.L1,\nli.L2,\nli.L3,\nli.L4,\nli.L5,\nli.L6,\nli.L7,\nli.L8,\nli.L9 {\n  padding-left: 1em;\n  background-color: #1d1f21;\n  list-style-type: decimal;\n}\n\n@media screen {\n\n  /* string content */\n\n  .str {\n    color: #b5bd68;\n  }\n\n  /* keyword */\n\n  .kwd {\n    color: #b294bb;\n  }\n\n  /* comment */\n\n  .com {\n    color: #969896;\n  }\n\n  /* type name */\n\n  .typ {\n    color: #81a2be;\n  }\n\n  /* literal value */\n\n  .lit {\n    color: #de935f;\n  }\n\n  /* punctuation */\n\n  .pun {\n    color: #c5c8c6;\n  }\n\n  /* lisp open bracket */\n\n  .opn {\n    color: #c5c8c6;\n  }\n\n  /* lisp close bracket */\n\n  .clo {\n    color: #c5c8c6;\n  }\n\n  /* markup tag name */\n\n  .tag {\n    color: #cc6666;\n  }\n\n  /* markup attribute name */\n\n  .atn {\n    color: #de935f;\n  }\n\n  /* markup attribute value */\n\n  .atv {\n    color: #8abeb7;\n  }\n\n  /* declaration */\n\n  .dec {\n    color: #de935f;\n  }\n\n  /* variable name */\n\n  .var {\n    color: #cc6666;\n  }\n\n  /* function name */\n\n  .fun {\n    color: #81a2be;\n  }\n}\n", ""]);
-
-// exports
-
-
-/***/ }),
-/* 13 */
-/***/ (function(module, exports) {
-
-/*
-	MIT License http://www.opensource.org/licenses/mit-license.php
-	Author Tobias Koppers @sokra
-*/
-var stylesInDom = {},
-	memoize = function(fn) {
-		var memo;
-		return function () {
-			if (typeof memo === "undefined") memo = fn.apply(this, arguments);
-			return memo;
-		};
-	},
-	isOldIE = memoize(function() {
-		return /msie [6-9]\b/.test(window.navigator.userAgent.toLowerCase());
-	}),
-	getHeadElement = memoize(function () {
-		return document.head || document.getElementsByTagName("head")[0];
-	}),
-	singletonElement = null,
-	singletonCounter = 0,
-	styleElementsInsertedAtTop = [];
-
-module.exports = function(list, options) {
-	if(typeof DEBUG !== "undefined" && DEBUG) {
-		if(typeof document !== "object") throw new Error("The style-loader cannot be used in a non-browser environment");
-	}
-
-	options = options || {};
-	// Force single-tag solution on IE6-9, which has a hard limit on the # of <style>
-	// tags it will allow on a page
-	if (typeof options.singleton === "undefined") options.singleton = isOldIE();
-
-	// By default, add <style> tags to the bottom of <head>.
-	if (typeof options.insertAt === "undefined") options.insertAt = "bottom";
-
-	var styles = listToStyles(list);
-	addStylesToDom(styles, options);
-
-	return function update(newList) {
-		var mayRemove = [];
-		for(var i = 0; i < styles.length; i++) {
-			var item = styles[i];
-			var domStyle = stylesInDom[item.id];
-			domStyle.refs--;
-			mayRemove.push(domStyle);
-		}
-		if(newList) {
-			var newStyles = listToStyles(newList);
-			addStylesToDom(newStyles, options);
-		}
-		for(var i = 0; i < mayRemove.length; i++) {
-			var domStyle = mayRemove[i];
-			if(domStyle.refs === 0) {
-				for(var j = 0; j < domStyle.parts.length; j++)
-					domStyle.parts[j]();
-				delete stylesInDom[domStyle.id];
-			}
-		}
-	};
-}
-
-function addStylesToDom(styles, options) {
-	for(var i = 0; i < styles.length; i++) {
-		var item = styles[i];
-		var domStyle = stylesInDom[item.id];
-		if(domStyle) {
-			domStyle.refs++;
-			for(var j = 0; j < domStyle.parts.length; j++) {
-				domStyle.parts[j](item.parts[j]);
-			}
-			for(; j < item.parts.length; j++) {
-				domStyle.parts.push(addStyle(item.parts[j], options));
-			}
-		} else {
-			var parts = [];
-			for(var j = 0; j < item.parts.length; j++) {
-				parts.push(addStyle(item.parts[j], options));
-			}
-			stylesInDom[item.id] = {id: item.id, refs: 1, parts: parts};
-		}
-	}
-}
-
-function listToStyles(list) {
-	var styles = [];
-	var newStyles = {};
-	for(var i = 0; i < list.length; i++) {
-		var item = list[i];
-		var id = item[0];
-		var css = item[1];
-		var media = item[2];
-		var sourceMap = item[3];
-		var part = {css: css, media: media, sourceMap: sourceMap};
-		if(!newStyles[id])
-			styles.push(newStyles[id] = {id: id, parts: [part]});
-		else
-			newStyles[id].parts.push(part);
-	}
-	return styles;
-}
-
-function insertStyleElement(options, styleElement) {
-	var head = getHeadElement();
-	var lastStyleElementInsertedAtTop = styleElementsInsertedAtTop[styleElementsInsertedAtTop.length - 1];
-	if (options.insertAt === "top") {
-		if(!lastStyleElementInsertedAtTop) {
-			head.insertBefore(styleElement, head.firstChild);
-		} else if(lastStyleElementInsertedAtTop.nextSibling) {
-			head.insertBefore(styleElement, lastStyleElementInsertedAtTop.nextSibling);
-		} else {
-			head.appendChild(styleElement);
-		}
-		styleElementsInsertedAtTop.push(styleElement);
-	} else if (options.insertAt === "bottom") {
-		head.appendChild(styleElement);
-	} else {
-		throw new Error("Invalid value for parameter 'insertAt'. Must be 'top' or 'bottom'.");
-	}
-}
-
-function removeStyleElement(styleElement) {
-	styleElement.parentNode.removeChild(styleElement);
-	var idx = styleElementsInsertedAtTop.indexOf(styleElement);
-	if(idx >= 0) {
-		styleElementsInsertedAtTop.splice(idx, 1);
-	}
-}
-
-function createStyleElement(options) {
-	var styleElement = document.createElement("style");
-	styleElement.type = "text/css";
-	insertStyleElement(options, styleElement);
-	return styleElement;
-}
-
-function createLinkElement(options) {
-	var linkElement = document.createElement("link");
-	linkElement.rel = "stylesheet";
-	insertStyleElement(options, linkElement);
-	return linkElement;
-}
-
-function addStyle(obj, options) {
-	var styleElement, update, remove;
-
-	if (options.singleton) {
-		var styleIndex = singletonCounter++;
-		styleElement = singletonElement || (singletonElement = createStyleElement(options));
-		update = applyToSingletonTag.bind(null, styleElement, styleIndex, false);
-		remove = applyToSingletonTag.bind(null, styleElement, styleIndex, true);
-	} else if(obj.sourceMap &&
-		typeof URL === "function" &&
-		typeof URL.createObjectURL === "function" &&
-		typeof URL.revokeObjectURL === "function" &&
-		typeof Blob === "function" &&
-		typeof btoa === "function") {
-		styleElement = createLinkElement(options);
-		update = updateLink.bind(null, styleElement);
-		remove = function() {
-			removeStyleElement(styleElement);
-			if(styleElement.href)
-				URL.revokeObjectURL(styleElement.href);
-		};
-	} else {
-		styleElement = createStyleElement(options);
-		update = applyToTag.bind(null, styleElement);
-		remove = function() {
-			removeStyleElement(styleElement);
-		};
-	}
-
-	update(obj);
-
-	return function updateStyle(newObj) {
-		if(newObj) {
-			if(newObj.css === obj.css && newObj.media === obj.media && newObj.sourceMap === obj.sourceMap)
-				return;
-			update(obj = newObj);
-		} else {
-			remove();
-		}
-	};
-}
-
-var replaceText = (function () {
-	var textStore = [];
-
-	return function (index, replacement) {
-		textStore[index] = replacement;
-		return textStore.filter(Boolean).join('\n');
-	};
-})();
-
-function applyToSingletonTag(styleElement, index, remove, obj) {
-	var css = remove ? "" : obj.css;
-
-	if (styleElement.styleSheet) {
-		styleElement.styleSheet.cssText = replaceText(index, css);
-	} else {
-		var cssNode = document.createTextNode(css);
-		var childNodes = styleElement.childNodes;
-		if (childNodes[index]) styleElement.removeChild(childNodes[index]);
-		if (childNodes.length) {
-			styleElement.insertBefore(cssNode, childNodes[index]);
-		} else {
-			styleElement.appendChild(cssNode);
-		}
-	}
-}
-
-function applyToTag(styleElement, obj) {
-	var css = obj.css;
-	var media = obj.media;
-
-	if(media) {
-		styleElement.setAttribute("media", media)
-	}
-
-	if(styleElement.styleSheet) {
-		styleElement.styleSheet.cssText = css;
-	} else {
-		while(styleElement.firstChild) {
-			styleElement.removeChild(styleElement.firstChild);
-		}
-		styleElement.appendChild(document.createTextNode(css));
-	}
-}
-
-function updateLink(linkElement, obj) {
-	var css = obj.css;
-	var sourceMap = obj.sourceMap;
-
-	if(sourceMap) {
-		// http://stackoverflow.com/a/26603875
-		css += "\n/*# sourceMappingURL=data:application/json;base64," + btoa(unescape(encodeURIComponent(JSON.stringify(sourceMap)))) + " */";
-	}
-
-	var blob = new Blob([css], { type: "text/css" });
-
-	var oldSrc = linkElement.href;
-
-	linkElement.href = URL.createObjectURL(blob);
-
-	if(oldSrc)
-		URL.revokeObjectURL(oldSrc);
-}
-
-
-/***/ }),
-/* 14 */
-/***/ (function(module, exports) {
-
-module.exports = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAABUFBMVEUAAAAVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcVmVcO2ZyiAAAAb3RSTlMAAQIDBQYHCAkKDQ8QERITFBUWFxgZGxwdHiAhIiMoKissLTM4PkBBREpMUFFSVFZZW1xdXl9hYmNvc3V4e35/goOMkZeYmpudnqCio6WmqKq1t7m6vsDBw8zOz9HT19nc3uLk6Onr7e/x8/X5+/2VuNh1AAACKUlEQVRYw+3W61/SUBjA8WcIlpXZRbuhZmVZGJXdtQvaTQuz1LQMs1IMFMbv/3/Xiw04O9vZzvzUO593HM739xkbsIkczj+b47delpdXYmd5/tmNIwZ+/guWMxfpp7Ge3+0jPpfp+gV7v3dKRESc11C92PbP7X3d958B3BHPXwagVuhLPNGZY1nPf/JyfmET4Guv/QVre7+QB9jOpfBL3Y/k5v0rMH4wD/WsrAKtjL3/GDyt12QH2Dqw56oArFn7Rc3/yqQKhPyffkkTcMqar/VLmkC0tw84H3R/UtIETF4PHL37dDDSvzd4LXCpAUym8cFA3gXgTsjrfxn1AYkKDLv++0XNz5u9GhhxOzuK1l4JDLnKnqKtVwI/A7tud/y7WN8N5LR9fsF5G/2/GnEEDW3npJVXAtcJF5w3SV69CvdChbA/LTEBmdILm8k++E2cSrgv+V69rWm/hfs2fo5XxkBcYe+Mt2UWVswBeWDy+76fIT5gKuyf9d9vJQWiCx0vJAbkYZy3CYQLircKyCOztwsEC41BSR2QxyZvG+gWNG8dkCe+H5IDBrxCyIcCu0Al+m52s0llIPLnu6i8XgeajuF+mA2v9QGUlIUSwKhYTwGgoCyMAWxYP2X11gBOKCuZKsCCZSH3LXzSJwDYGHWSeWZ8G4ALwWX/ybFZWUuYrZa3c0br9nwn1ZRDR9azlMa/iPqsE1Vb/uOK4fSMldZ3k/DO6vSwHM5/mL+n5I2BF31JYgAAAABJRU5ErkJggg=="
-
-/***/ }),
-/* 15 */
-/***/ (function(module, exports) {
-
-module.exports = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAAt1BMVEUAAAC/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+/wb+rCW7jAAAAPHRSTlMAAQMECAkKCw4QERweJiorLDg6O0JFRk1QUV5hZmhpa36AhYiOj5udpbC1t7m+x9Ha3uLk6Ovt7/H3+/3V7YVuAAABMElEQVRYw+2Xx1YCMRhGv2Fo0qSDFEWqIL0I4n3/53IR5qC4IXGbu5pZ3DuT/2SRSBGZWncwntzB+LVdTuiGoL7FimXhl59bY8178upXceGQjfwGbnxdCnlcOSQlKTyat1UpHugugnTz4zIHSeqY52fZEL4ZqyDFzgC0ZIkpLKUiAFNbX6FZRUI9ALLWATUBKGsGcLL3lQagrQ3A3CEQAPAqACYOAWOO/xuY+IAP+IAP+IAP+IAP+MCfwFh7t4NqdMwbaAGwcwjEAehqCMCDfaAEQE0VAPr2gRUAmcuf8GjrvwCwlTQC4NOy0DLfrUtKXS5AfYs5ZKfGWQdSdPAHdtPJXcxPkZEzvb7rra0abQnHQuO6picH/Zj/OZXUyFI/d8LbnVkZLvb3yZtZrxiLvG/BQxobYX07aQAAAABJRU5ErkJggg=="
-
-/***/ }),
-/* 16 */
-/***/ (function(module, exports, __webpack_require__) {
-
-__webpack_require__(10);
-
-var $ = __webpack_require__(1);
-var showdown = __webpack_require__(0);
-var Clipboard = __webpack_require__(3);
-var CodeTheme = __webpack_require__(8);
-var PageTheme = __webpack_require__(9);
-
-__webpack_require__(7);
-__webpack_require__(6);
-__webpack_require__(5);
-
-__webpack_require__(4);
-
-
-var kv = location.href.split('?')[1];
-kv = kv && kv.split('&') || [];
-var params = {};
-$.each(kv, function(index, item) {
-  var m = (item || '').split('=');
-  if (m && m[0] && m[1]) {
-    params[m[0]]= m[1];
-  }
-});
-
-// 方便跨域加载资源
-if (/\.barretlee\.com$/.test(location.hostname)) {
-  document.domain = 'barretlee.com';
-}
-
-
-var converter =  new showdown.Converter({
-  extensions: ['prettify', 'tasklist', 'footnote'],
-  tables: true
-});
-/**
- * [OnlineMarkdown description]
- * @type {Object}
- */
-var OnlineMarkdown = {
-  currentState: 'edit',
-  init: function() {
-    var self = this;
-    self.load().then(function() {
-      self.start()
-    }).fail(function(){
-      self.start();
-    });
-  },
-  start: function() {
-    this.bindEvt();
-    this.updateOutput();
-    new CodeTheme();
-    new PageTheme();
-    new Clipboard('.btn');
-  },
-  load: function() {
-    return $.ajax({
-      type: 'GET',
-      url: params.path || './demo.md',
-      dateType: 'text',
-      data: {
-        _t: new Date() * 1
-      },
-      timeout: 2000
-    }).then(function(data) {
-      $('#input').val(data);
-    });
-  },
-  bindEvt: function() {
-    var self = this;
-    $('#input').on('input keydown paste', self.updateOutput);
-    var $copy = $('.copy-button');
-    var $convert = $('.convert-button');
-    $convert.on('click', function() {
-      var $this = $(this);
-      if (self.currentState === 'preview') {
-        self.currentState = 'edit';
-        $this.text('预览');
-        $copy.hide();
-        $('#input').fadeIn();
-        $('#output').hide();
-      } else {
-        self.currentState = 'preview';
-        $this.text('编辑');
-        $copy.show();
-        $('#input').fadeOut();
-        $('#output').show();
-      }
-    });
-    if (params.preview) {
-      $convert.trigger('click');
-    }
-  },
-
-  updateOutput: function () {
-    var val = converter.makeHtml($('#input').val());
-    $('#output .wrapper').html(val);
-    PR.prettyPrint();
-    $('#outputCtt li').each(function() {
-      $(this).html('<span><span>' + $(this).html() + '</span></span>');
-    });
-  }
-};
-
-OnlineMarkdown.init();
 
 
 /***/ })
