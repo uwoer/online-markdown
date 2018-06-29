@@ -9,8 +9,7 @@ var PageTheme = require("./theme/page-theme");
 require("./showdown-plugins/showdown-prettify-for-wechat.js");
 require("./showdown-plugins/showdown-github-task-list.js");
 require("./showdown-plugins/showdown-footnote.js");
-
-// require("./google-code-prettify/run_prettify.js");
+require("./google-code-prettify/run_prettify.js");
 
 
 var kv = location.href.split('?')[1];
